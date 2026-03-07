@@ -1,5 +1,3 @@
-# Scripts/01_build_eda_dataset.py
-import numpy as np
 from Src.io import load_skincare_dv
 from Src.config import PROCESSED_DIR
 from Src.scoring import add_log_features, ScoreScaler, compute_score_with_scaler

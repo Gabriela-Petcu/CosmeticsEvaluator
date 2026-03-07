@@ -7,7 +7,7 @@ import numpy as np
 def build_preprocessing_pipeline(log_cols, std_cols):
     log_pipe = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
-        ("log", FunctionTransformer(np.log1p, validate=False)),
+        ("log", FunctionTransformer(np.log1p, validate=False, feature_names_out="one-to-one")),
         ("scaler", MinMaxScaler())
     ])
 

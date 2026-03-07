@@ -33,7 +33,7 @@ print("Train label distribution:\n", train_labeled["Merita"].value_counts(normal
 print("Test  label distribution:\n", test_labeled["Merita"].value_counts(normalize=True))
 
 log_cols = ["n_of_reviews", "n_of_loves"]
-std_cols = ["review_score", "price"]
+std_cols = ["review_score", "price_per_ounce"]
 features = log_cols + std_cols
 
 full_system = Pipeline([

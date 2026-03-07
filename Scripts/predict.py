@@ -16,7 +16,7 @@ df = add_log_features(df)
 df_scored = compute_score_with_scaler(df, scaler)
 df_scored = label_with_threshold(df_scored, threshold)
 
-features = ["n_of_reviews", "n_of_loves", "review_score", "price"]
+features = ["n_of_reviews", "n_of_loves", "review_score", "price_per_ounce"]
 df_scored["MeritaML"] = full_system.predict(df_scored[features])
 df_scored["ProbabilitateML"] = full_system.predict_proba(df_scored[features])[:, 1]
 
