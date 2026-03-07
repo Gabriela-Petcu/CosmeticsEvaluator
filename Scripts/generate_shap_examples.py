@@ -1,47 +1,11 @@
 import pandas as pd
-import joblib
-from pathlib import Path
 
-from Src.io import load_skincare_dv
-from Src.scoring import (
-    add_log_features,
-    ScoreScaler,
-    compute_score_with_scaler,
-    label_with_threshold
-)
 from Src.explainability import explain_product, explanation_to_dict
-
-
-MODEL_PATH = "Models/bundle_v1.joblib"
-
-
-def build_full_analysis_df() -> pd.DataFrame:
-    df = load_skincare_dv()
-
-    df = add_log_features(df)
-
-    score_cols = ["review_score", "log_reviews", "log_loves", "price_per_ounce"]
-    scaler = ScoreScaler().fit(df, cols=score_cols)
-
-    df_scored = compute_score_with_scaler(df, scaler)
-    threshold = float(df_scored["ScorFinal"].quantile(0.75))
-    df_labeled = label_with_threshold(df_scored, threshold)
-
-    bundle = joblib.load(MODEL_PATH)
-    pipeline = bundle["full_system"]
-
-    features = ["n_of_reviews", "n_of_loves", "review_score", "price_per_ounce"]
-
-    df_labeled["MeritaML"] = pipeline.predict(df_labeled[features])
-    df_labeled["ProbabilitateML"] = pipeline.predict_proba(df_labeled[features])[:, 1]
-    df_labeled["Disagreement"] = df_labeled["Merita"] != df_labeled["MeritaML"]
-    df_labeled["DistanceToThreshold"] = (df_labeled["ScorFinal"] - threshold).abs()
-
-    return df_labeled
+from Src.config import PROCESSED_DIR, MODEL_FEATURES
+from Src.inference import build_full_analysis_df, load_bundle
 
 
 def pick_examples(df: pd.DataFrame) -> pd.DataFrame:
-    # 1. Produs clar bun: baseline=1, ML=1, probabilitate mare
     good_df = df[(df["Merita"] == 1) & (df["MeritaML"] == 1)].copy()
     good_df = good_df.sort_values(
         by=["ProbabilitateML", "ScorFinal"],
@@ -49,7 +13,6 @@ def pick_examples(df: pd.DataFrame) -> pd.DataFrame:
     )
     good_example = good_df.head(1)
 
-    # 2. Produs clar slab: baseline=0, ML=0, probabilitate mică
     weak_df = df[(df["Merita"] == 0) & (df["MeritaML"] == 0)].copy()
     weak_df = weak_df.sort_values(
         by=["ProbabilitateML", "ScorFinal"],
@@ -57,7 +20,6 @@ def pick_examples(df: pd.DataFrame) -> pd.DataFrame:
     )
     weak_example = weak_df.head(1)
 
-    # 3. Produs interesant: disagreement sau aproape de threshold
     disagreement_df = df[df["Disagreement"]].copy()
 
     if not disagreement_df.empty:
@@ -78,10 +40,8 @@ def pick_examples(df: pd.DataFrame) -> pd.DataFrame:
 def build_explanations_table(examples_df: pd.DataFrame) -> pd.DataFrame:
     rows = []
 
-    feature_cols = ["n_of_reviews", "n_of_loves", "review_score", "price_per_ounce"]
-
     for _, row in examples_df.iterrows():
-        product_input = row[feature_cols].to_dict()
+        product_input = row[MODEL_FEATURES].to_dict()
         explanation = explain_product(product_input)
         explanation_dict = explanation_to_dict(explanation)
 
@@ -117,16 +77,20 @@ def main():
     print("Loading and analyzing full dataset...")
     full_df = build_full_analysis_df()
 
+    bundle = load_bundle()
+    threshold = float(bundle["threshold"])
+
+    full_df["Disagreement"] = full_df["Merita"] != full_df["MeritaML"]
+    full_df["DistanceToThreshold"] = (full_df["ScorFinal"] - threshold).abs()
+
     print("Selecting representative examples...")
     examples_df = pick_examples(full_df)
 
     print("Generating SHAP explanations...")
     explanations_df = build_explanations_table(examples_df)
 
-    output_dir = Path("Data") / "Processed"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    output_path = output_dir / "shap_examples.csv"
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = PROCESSED_DIR / "shap_examples.csv"
     explanations_df.to_csv(output_path, index=False)
 
     print("\n=== SHAP EXAMPLES ===")

@@ -1,8 +1,71 @@
+from pathlib import Path
+
 import pandas as pd
+
 from .config import RAW_SKINCARE_DV
 
-def load_skincare_dv(path=RAW_SKINCARE_DV) -> pd.DataFrame:
+
+TEXT_COLUMNS_TO_CLEAN = ["brand", "name"]
+
+
+def _fix_mojibake_text(value):
     """
-    Încarcă dataset-ul skincare_dv.csv într-un DataFrame.
+    Încearcă să repare texte de tip mojibake, ex:
+    'Cr√®me Ancienne¬Æ' -> 'Crème Ancienne®'
     """
-    return pd.read_csv(path)
+    if pd.isna(value):
+        return value
+
+    if not isinstance(value, str):
+        return value
+
+    text = value.strip()
+    if not text:
+        return text
+
+    # Dacă nu pare stricat, îl lăsăm așa
+    suspicious_markers = ["√", "¬", "Ã", "Â", "Ð", "Ñ"]
+    if not any(marker in text for marker in suspicious_markers):
+        return text
+
+    # Încercăm câteva conversii uzuale pentru mojibake
+    attempts = [
+        ("mac_roman", "utf-8"),
+        ("latin1", "utf-8"),
+        ("cp1252", "utf-8"),
+    ]
+
+    for source_encoding, target_encoding in attempts:
+        try:
+            fixed = text.encode(source_encoding).decode(target_encoding)
+            return fixed
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            continue
+
+    return text
+
+
+def _clean_text_columns(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+
+    for col in TEXT_COLUMNS_TO_CLEAN:
+        if col in out.columns:
+            out[col] = out[col].apply(_fix_mojibake_text)
+
+    return out
+
+
+def load_skincare_dv(path: str | Path = RAW_SKINCARE_DV) -> pd.DataFrame:
+    """
+    Încarcă dataset-ul skincare_df.csv într-un DataFrame și curăță
+    eventualele probleme de encoding pe coloanele text.
+    """
+    path = Path(path)
+
+    if not path.exists():
+        raise FileNotFoundError(f"Nu există fișierul dataset la calea: {path}")
+
+    df = pd.read_csv(path)
+    df = _clean_text_columns(df)
+
+    return df

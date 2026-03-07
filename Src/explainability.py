@@ -1,19 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
-import joblib
 import numpy as np
 import pandas as pd
 import shap
 
+from Src.config import MODEL_FEATURES
+from Src.inference import load_bundle
 from Src.scoring import add_log_features, compute_score_with_scaler, label_with_threshold
-
-
-BUNDLE_PATH = Path("Models") / "bundle_v1.joblib"
-MODEL_FEATURES = ["n_of_reviews", "n_of_loves", "review_score", "price_per_ounce"]
 
 
 @dataclass
@@ -35,9 +31,6 @@ class ProductExplanation:
 
 
 def _ensure_dataframe(product: dict[str, Any] | pd.Series | pd.DataFrame) -> pd.DataFrame:
-    """
-    Transformă inputul într-un DataFrame cu exact un rând.
-    """
     if isinstance(product, dict):
         df = pd.DataFrame([product])
     elif isinstance(product, pd.Series):
@@ -54,43 +47,22 @@ def _ensure_dataframe(product: dict[str, Any] | pd.Series | pd.DataFrame) -> pd.
 
 
 def _validate_required_columns(df: pd.DataFrame, required_cols: list[str]) -> None:
-    """
-    Verifică dacă există toate coloanele necesare.
-    """
     missing = [col for col in required_cols if col not in df.columns]
     if missing:
         raise ValueError(f"Lipsesc coloane necesare pentru explain_product: {missing}")
 
 
-def _load_bundle(bundle_path: str | Path = BUNDLE_PATH) -> dict[str, Any]:
-    """
-    Încarcă bundle-ul serializat.
-    """
-    bundle_path = Path(bundle_path)
+def _validate_numeric_values(df: pd.DataFrame, cols: list[str]) -> None:
+    for col in cols:
+        if df[col].isna().any():
+            raise ValueError(f"Coloana '{col}' conține valori lipsă")
 
-    if not bundle_path.exists():
-        raise FileNotFoundError(
-            f"Nu există bundle-ul la calea: {bundle_path}. "
-            "Rulează mai întâi training-ul pentru a genera Models/bundle_v1.joblib"
-        )
-
-    bundle = joblib.load(bundle_path)
-
-    required_keys = ["full_system", "threshold", "score_scaler"]
-    missing_keys = [k for k in required_keys if k not in bundle]
-    if missing_keys:
-        raise ValueError(f"Bundle invalid. Lipsesc cheile: {missing_keys}")
-
-    return bundle
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            raise ValueError(f"Coloana '{col}' trebuie să fie numerică")
 
 
 def _get_positive_class_shap_values(shap_values: Any) -> np.ndarray:
-    """
-    Normalizează diferitele formate SHAP într-un array 2D de forma:
-    (n_samples, n_features) pentru clasa pozitivă.
-    """
     if isinstance(shap_values, list):
-        # format clasic pentru clasificare binară: [class_0, class_1]
         if len(shap_values) < 2:
             raise ValueError("SHAP a returnat o listă neașteptată pentru clasificare binară")
         return np.asarray(shap_values[1])
@@ -98,11 +70,9 @@ def _get_positive_class_shap_values(shap_values: Any) -> np.ndarray:
     shap_array = np.asarray(shap_values)
 
     if shap_array.ndim == 2:
-        # deja (n_samples, n_features)
         return shap_array
 
     if shap_array.ndim == 3:
-        # posibil (n_samples, n_features, n_classes)
         if shap_array.shape[2] < 2:
             raise ValueError("SHAP 3D array fără clasa pozitivă")
         return shap_array[:, :, 1]
@@ -111,10 +81,6 @@ def _get_positive_class_shap_values(shap_values: Any) -> np.ndarray:
 
 
 def _clean_feature_name(feature_name: str) -> str:
-    """
-    Elimină prefixele generate de ColumnTransformer:
-    ex: log_cols__n_of_reviews -> n_of_reviews
-    """
     if "__" in feature_name:
         return feature_name.split("__", 1)[1]
     return feature_name
@@ -126,9 +92,6 @@ def _extract_top_factors(
     input_row: pd.DataFrame,
     top_k: int = 3
 ) -> list[FactorExplanation]:
-    """
-    Extrage cei mai importanți top_k factori pe baza valorilor absolute SHAP.
-    """
     factors: list[FactorExplanation] = []
 
     for raw_feature_name, shap_value in zip(feature_names, shap_row):
@@ -139,7 +102,12 @@ def _extract_top_factors(
         else:
             feature_value = None
 
-        direction = "creste_probabilitatea" if shap_value > 0 else "scade_probabilitatea"
+        if shap_value > 0:
+            direction = "creste_probabilitatea"
+        elif shap_value < 0:
+            direction = "scade_probabilitatea"
+        else:
+            direction = "impact_neutru"
 
         factors.append(
             FactorExplanation(
@@ -157,33 +125,19 @@ def _extract_top_factors(
 
 def explain_product(
     product: dict[str, Any] | pd.Series | pd.DataFrame,
-    bundle_path: str | Path = BUNDLE_PATH,
     top_k: int = 3
 ) -> ProductExplanation:
-    """
-    Explică decizia sistemului pentru un singur produs.
-
-    Returnează:
-    - ScorFinal (baseline)
-    - Merita (baseline)
-    - MeritaML
-    - ProbabilitateML
-    - TopFactori (SHAP)
-    """
-    # 1. Input -> DataFrame
     product_df = _ensure_dataframe(product)
     _validate_required_columns(product_df, MODEL_FEATURES)
+    _validate_numeric_values(product_df, MODEL_FEATURES)
 
-    # păstrăm doar feature-urile relevante
     product_df = product_df[MODEL_FEATURES].copy()
 
-    # 2. Încarcă bundle
-    bundle = _load_bundle(bundle_path)
+    bundle = load_bundle()
     full_system = bundle["full_system"]
-    threshold = bundle["threshold"]
+    threshold = float(bundle["threshold"])
     score_scaler = bundle["score_scaler"]
 
-    # 3. Baseline
     baseline_df = add_log_features(product_df.copy())
     baseline_df = compute_score_with_scaler(baseline_df, score_scaler)
     baseline_df = label_with_threshold(baseline_df, threshold)
@@ -191,7 +145,6 @@ def explain_product(
     scor_final = float(baseline_df.iloc[0]["ScorFinal"])
     merita = int(baseline_df.iloc[0]["Merita"])
 
-    # 4. ML predictions
     preprocessor = full_system.named_steps["preprocessor"]
     classifier = full_system.named_steps["classifier"]
 
@@ -201,10 +154,8 @@ def explain_product(
     merita_ml = int(classifier.predict(X_transformed)[0])
     probabilitate_ml = float(classifier.predict_proba(X_transformed)[0, 1])
 
-    # 5. Feature names după preprocessing
     transformed_feature_names = list(preprocessor.get_feature_names_out())
 
-    # 6. SHAP
     explainer = shap.TreeExplainer(classifier)
     shap_values = explainer.shap_values(X_transformed)
     shap_values_positive = _get_positive_class_shap_values(shap_values)
@@ -226,9 +177,6 @@ def explain_product(
 
 
 def explanation_to_dict(explanation: ProductExplanation) -> dict[str, Any]:
-    """
-    Convertește rezultatul într-un dict simplu, util pentru print, JSON sau API.
-    """
     return {
         "ScorFinal": explanation.ScorFinal,
         "Merita": explanation.Merita,
@@ -248,9 +196,6 @@ def explanation_to_dict(explanation: ProductExplanation) -> dict[str, Any]:
 
 
 def print_explanation(explanation: ProductExplanation) -> None:
-    """
-    Afișare prietenoasă în consolă.
-    """
     print("=== EXPLICAȚIE PRODUS ===")
     print(f"ScorFinal: {explanation.ScorFinal:.4f}")
     print(f"Merita (baseline): {explanation.Merita}")

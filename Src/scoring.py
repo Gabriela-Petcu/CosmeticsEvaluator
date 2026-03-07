@@ -19,11 +19,14 @@ class ScoreScaler:
         self.maxs_ = {}
 
     def fit(self, df: pd.DataFrame, cols: list[str]):
+        missing = [c for c in cols if c not in df.columns]
+        if missing:
+            raise ValueError(f"Lipsesc coloane necesare pentru ScoreScaler.fit: {missing}")
+
         for c in cols:
             self.mins_[c] = float(df[c].min())
             self.maxs_[c] = float(df[c].max())
         return self
-
     def transform_series(self, s: pd.Series, col: str) -> pd.Series:
         mn = self.mins_[col]
         mx = self.maxs_[col]

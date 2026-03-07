@@ -1,10 +1,18 @@
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, FunctionTransformer
-from sklearn.impute import SimpleImputer
-import numpy as np
+from __future__ import annotations
 
-def build_preprocessing_pipeline(log_cols, std_cols):
+import numpy as np
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer, MinMaxScaler, StandardScaler
+
+from Src.config import LOG_FEATURE_COLUMNS, STANDARD_FEATURE_COLUMNS
+
+
+def build_preprocessing_pipeline() -> ColumnTransformer:
+    """
+    Construiește pipeline-ul de preprocessing pentru feature-urile modelului.
+    """
     log_pipe = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
         ("log", FunctionTransformer(np.log1p, validate=False, feature_names_out="one-to-one")),
@@ -17,6 +25,6 @@ def build_preprocessing_pipeline(log_cols, std_cols):
     ])
 
     return ColumnTransformer([
-        ("log_cols", log_pipe, log_cols),
-        ("std_cols", std_pipe, std_cols)
+        ("log_cols", log_pipe, LOG_FEATURE_COLUMNS),
+        ("std_cols", std_pipe, STANDARD_FEATURE_COLUMNS)
     ])
