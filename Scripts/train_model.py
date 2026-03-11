@@ -1,10 +1,8 @@
 import joblib
-
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-
 from Src.config import PROJECT_ROOT, SCORE_COLUMNS, MODEL_FEATURES
 from Src.io import load_skincare_dv
 from Src.preprocessing import build_preprocessing_pipeline
@@ -61,8 +59,7 @@ def main():
     out_path = models_dir / "bundle_v1.joblib"
     joblib.dump(bundle, out_path)
 
-    print(f"✅ Model salvat în: {out_path}")
-
+    print(f"Model salvat în: {out_path}")
 
 if __name__ == "__main__":
     main()

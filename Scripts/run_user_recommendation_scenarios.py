@@ -124,7 +124,7 @@ def main():
     for i, row in enumerate(rows, start=1):
         print_scenario_result(i, row)
 
-    print(f"\n✅ Saved to: {output_path}")
+    print(f"\n Saved to: {output_path}")
 
 
 if __name__ == "__main__":

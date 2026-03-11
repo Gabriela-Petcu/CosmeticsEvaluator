@@ -3,9 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from Src.config import MODEL_PATH, PROCESSED_DIR
 
-
-
-
+#extage din model importanta fiecarei caracteristici atat grafic cat si tabel
 def clean_feature_name(feature_name: str) -> str:
     if "__" in feature_name:
         return feature_name.split("__", 1)[1]
@@ -58,8 +56,8 @@ def main():
 
     print("=== GLOBAL FEATURE IMPORTANCE ===")
     print(importance_df.to_string(index=False))
-    print(f"\n✅ CSV saved to: {csv_path}")
-    print(f"✅ Chart saved to: {png_path}")
+    print(f"\n CSV saved to: {csv_path}")
+    print(f" Chart saved to: {png_path}")
 
 
 if __name__ == "__main__":

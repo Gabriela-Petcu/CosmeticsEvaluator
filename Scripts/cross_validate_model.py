@@ -12,29 +12,23 @@ from Src.scoring import add_log_features, ScoreScaler, compute_score_with_scaler
 
 
 def main():
-    # 1. Load data
     df = load_skincare_dv()
-
-    # 2. Build baseline labels
+    #logica baseline
     df = add_log_features(df)
-
     scaler = ScoreScaler().fit(df, cols=SCORE_COLUMNS)
-
     df_scored = compute_score_with_scaler(df, scaler)
     threshold = float(df_scored["ScorFinal"].quantile(0.75))
     df_labeled = label_with_threshold(df_scored, threshold)
 
-    # 3. Features and target
     X = df_labeled[MODEL_FEATURES].copy()
     y = df_labeled["Merita"].copy()
 
-    # 4. Build ML pipeline
     full_system = Pipeline([
         ("preprocessor", build_preprocessing_pipeline()),
         ("classifier", RandomForestClassifier(n_estimators=200, random_state=42))
     ])
 
-    # 5. Cross-validation setup
+    #cross validation setup
     cv = StratifiedKFold(
         n_splits=5,
         shuffle=True,
@@ -101,8 +95,8 @@ def main():
     folds_df.to_csv(folds_path, index=False)
     summary_df.to_csv(summary_path, index=False)
 
-    print(f"\n✅ Per-fold results saved to: {folds_path}")
-    print(f"✅ Summary results saved to: {summary_path}")
+    print(f"\n Per-fold results saved to: {folds_path}")
+    print(f" Summary results saved to: {summary_path}")
 
 
 if __name__ == "__main__":

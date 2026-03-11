@@ -95,7 +95,7 @@ def main():
 
     print("\n=== SHAP EXAMPLES ===")
     print(explanations_df.to_string(index=False))
-    print(f"\n✅ Saved to: {output_path}")
+    print(f"\n Saved to: {output_path}")
 
 
 if __name__ == "__main__":

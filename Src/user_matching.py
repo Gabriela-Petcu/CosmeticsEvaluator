@@ -35,14 +35,14 @@ class MatchResult:
     ReasonsPositive: list[str]
     ReasonsNegative: list[str]
 
-
+#verifica daca produsul apartine unei categorii
 def _get_category(product: pd.Series, key: str) -> int:
     col = CATEGORY_COLUMNS[key]
     if col not in product.index:
         return 0
     return int(product.get(col, 0))
 
-
+#verifica daca numele produsului contine cuvinte cheie (matte)
 def _name_contains(product_name: str, keywords: list[str]) -> bool:
     name = (product_name or "").lower()
     return any(keyword in name for keyword in keywords)

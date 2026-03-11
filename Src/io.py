@@ -1,12 +1,9 @@
 from pathlib import Path
-
 import pandas as pd
-
 from .config import RAW_SKINCARE_DV
 
 
 TEXT_COLUMNS_TO_CLEAN = ["brand", "name"]
-
 
 def _fix_mojibake_text(value):
     """
@@ -23,12 +20,10 @@ def _fix_mojibake_text(value):
     if not text:
         return text
 
-    # Dacă nu pare stricat, îl lăsăm așa
     suspicious_markers = ["√", "¬", "Ã", "Â", "Ð", "Ñ"]
     if not any(marker in text for marker in suspicious_markers):
         return text
 
-    # Încercăm câteva conversii uzuale pentru mojibake
     attempts = [
         ("mac_roman", "utf-8"),
         ("latin1", "utf-8"),

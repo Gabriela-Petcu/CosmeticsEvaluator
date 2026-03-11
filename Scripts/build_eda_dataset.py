@@ -5,6 +5,7 @@ from Src.config import PROCESSED_DIR, SCORE_COLUMNS
 
 
 def main():
+    #creeaza datasetul pt eda
     df = load_skincare_dv()
     df = add_log_features(df)
 

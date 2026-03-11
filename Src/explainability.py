@@ -1,12 +1,9 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any
-
 import numpy as np
 import pandas as pd
 import shap
-
 from Src.config import MODEL_FEATURES
 from Src.inference import load_bundle
 from Src.scoring import add_log_features, compute_score_with_scaler, label_with_threshold
@@ -39,7 +36,6 @@ def _ensure_dataframe(product: dict[str, Any] | pd.Series | pd.DataFrame) -> pd.
         df = product.copy()
     else:
         raise TypeError("product trebuie să fie dict, pandas.Series sau pandas.DataFrame")
-
     if len(df) != 1:
         raise ValueError("explain_product() acceptă exact un singur produs")
 
@@ -62,6 +58,8 @@ def _validate_numeric_values(df: pd.DataFrame, cols: list[str]) -> None:
 
 
 def _get_positive_class_shap_values(shap_values: Any) -> np.ndarray:
+    """
+    SHAP poate returna în moduri diferite în funcție de model și versiune. Această funcție normalizează output-ul pentru clasificare binară."""
     if isinstance(shap_values, list):
         if len(shap_values) < 2:
             raise ValueError("SHAP a returnat o listă neașteptată pentru clasificare binară")
@@ -81,9 +79,11 @@ def _get_positive_class_shap_values(shap_values: Any) -> np.ndarray:
 
 
 def _clean_feature_name(feature_name: str) -> str:
-    if "__" in feature_name:
+        """
+        Dacă feature-ul a fost transformat în pipeline, poate avea prefixuri ca "num__" sau "cat__". Le eliminăm pentru claritate.
+        """
         return feature_name.split("__", 1)[1]
-    return feature_name
+        return feature_name
 
 
 def _extract_top_factors(
@@ -92,6 +92,8 @@ def _extract_top_factors(
     input_row: pd.DataFrame,
     top_k: int = 3
 ) -> list[FactorExplanation]:
+    """
+    Extrage top K factori care au contribuit cel mai mult la predicția ML pentru un produs dat."""
     factors: list[FactorExplanation] = []
 
     for raw_feature_name, shap_value in zip(feature_names, shap_row):
@@ -127,6 +129,7 @@ def explain_product(
     product: dict[str, Any] | pd.Series | pd.DataFrame,
     top_k: int = 3
 ) -> ProductExplanation:
+    """Generează o explicație pentru predicția ML a unui produs dat."""
     product_df = _ensure_dataframe(product)
     _validate_required_columns(product_df, MODEL_FEATURES)
     _validate_numeric_values(product_df, MODEL_FEATURES)
@@ -156,10 +159,13 @@ def explain_product(
 
     transformed_feature_names = list(preprocessor.get_feature_names_out())
 
+    #explicatorul
     explainer = shap.TreeExplainer(classifier)
+    #contributia fiecărui feature la predicția ML pentru acest produs
     shap_values = explainer.shap_values(X_transformed)
     shap_values_positive = _get_positive_class_shap_values(shap_values)
 
+    #extragem top factori
     top_factori = _extract_top_factors(
         shap_row=shap_values_positive[0],
         feature_names=transformed_feature_names,

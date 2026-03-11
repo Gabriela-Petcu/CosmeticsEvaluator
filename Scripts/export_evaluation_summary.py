@@ -83,7 +83,7 @@ def main():
     output_path = PROCESSED_DIR / "evaluation_summary.md"
     output_path.write_text("\n".join(lines), encoding="utf-8")
 
-    print(f"✅ Evaluation summary saved to: {output_path}")
+    print(f" Evaluation summary saved to: {output_path}")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 def add_log_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Adaugă log_reviews/log_loves într-un mod reproducibil."""
+    """calc log_reviews/log_loves pt a evita valori dezechilibrate"""
     out = df.copy()
     out["log_reviews"] = np.log1p(out["n_of_reviews"])
     out["log_loves"] = np.log1p(out["n_of_loves"])
@@ -49,6 +49,7 @@ def compute_score_with_scaler(df: pd.DataFrame, scaler: ScoreScaler) -> pd.DataF
 
     out = df.copy()
 
+    #normalizare
     out["score_rating"] = scaler.transform_series(out["review_score"], "review_score")
     out["score_reviews"] = scaler.transform_series(out["log_reviews"], "log_reviews")
     out["score_loves"] = scaler.transform_series(out["log_loves"], "log_loves")

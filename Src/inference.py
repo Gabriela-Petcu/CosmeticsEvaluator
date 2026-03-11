@@ -18,7 +18,6 @@ def load_bundle() -> dict[str, Any]:
         )
 
     bundle = joblib.load(MODEL_PATH)
-
     required_keys = ["full_system", "threshold", "score_scaler"]
     missing_keys = [k for k in required_keys if k not in bundle]
     if missing_keys:
@@ -52,6 +51,7 @@ def add_ml_predictions(df: pd.DataFrame, bundle: dict[str, Any]) -> pd.DataFrame
     if missing:
         raise ValueError(f"Lipsesc coloane necesare pentru predicție ML: {missing}")
     out["MeritaML"] = full_system.predict(out[MODEL_FEATURES])
+    #probabilitatea de a fi Merita=1
     out["ProbabilitateML"] = full_system.predict_proba(out[MODEL_FEATURES])[:, 1]
 
     return out

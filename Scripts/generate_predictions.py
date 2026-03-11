@@ -21,7 +21,7 @@ def main():
     out_path = PROCESSED_DIR / "comparison_results.csv"
     df_scored[output_cols].to_csv(out_path, index=False)
 
-    print(f"✅ Rezultate comparate salvate în: {out_path}")
+    print(f" Rezultate comparate salvate în: {out_path}")
 
 
 if __name__ == "__main__":
