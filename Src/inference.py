@@ -5,7 +5,7 @@ from typing import Any
 from Src.config import MODEL_PATH, MODEL_FEATURES
 from Src.io import load_skincare_dv
 from Src.scoring import add_log_features, compute_score_with_scaler, label_with_threshold
-
+from Src.feature_engineering import add_engineered_features
 
 def load_bundle() -> dict[str, Any]:
     """
@@ -22,7 +22,6 @@ def load_bundle() -> dict[str, Any]:
     missing_keys = [k for k in required_keys if k not in bundle]
     if missing_keys:
         raise ValueError(f"Bundle invalid. Lipsesc cheile: {missing_keys}")
-
     return bundle
 
 
@@ -33,6 +32,7 @@ def prepare_baseline_dataframe(df: pd.DataFrame, bundle: dict[str, Any]) -> pd.D
     threshold = float(bundle["threshold"])
     scaler = bundle["score_scaler"]
 
+    df = add_engineered_features(df)
     df = add_log_features(df)
     df = compute_score_with_scaler(df, scaler)
     df = label_with_threshold(df, threshold)

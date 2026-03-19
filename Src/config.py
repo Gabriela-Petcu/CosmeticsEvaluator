@@ -15,7 +15,11 @@ MODEL_FEATURES = [
     "n_of_reviews",
     "n_of_loves",
     "review_score",
-    "price_per_ounce"
+    "price_per_ounce",
+    "popularity_score",
+    "engagement_score",
+    "value_score",
+    "review_strength"
 ]
 
 SCORE_COLUMNS = [
@@ -32,5 +36,9 @@ LOG_FEATURE_COLUMNS = [
 
 STANDARD_FEATURE_COLUMNS = [
     "review_score",
-    "price_per_ounce"
+    "price_per_ounce",
+    "popularity_score",
+    "engagement_score",
+    "value_score",
+    "review_strength"
 ]

@@ -7,17 +7,20 @@ from Src.config import PROJECT_ROOT, SCORE_COLUMNS, MODEL_FEATURES
 from Src.io import load_skincare_dv
 from Src.preprocessing import build_preprocessing_pipeline
 from Src.scoring import add_log_features, ScoreScaler, compute_score_with_scaler, label_with_threshold
-
+from Src.feature_engineering import add_engineered_features
 
 def main():
     df = load_skincare_dv()
-
+    
     train_df, test_df = train_test_split(
         df,
         test_size=0.2,
         random_state=42
     )
 
+    train_df = add_engineered_features(train_df)
+    test_df = add_engineered_features(test_df)
+    
     train_df = add_log_features(train_df)
     test_df = add_log_features(test_df)
 
