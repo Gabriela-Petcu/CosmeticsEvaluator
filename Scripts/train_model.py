@@ -1,5 +1,5 @@
 import joblib
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -20,7 +20,7 @@ def main():
 
     train_df = add_engineered_features(train_df)
     test_df = add_engineered_features(test_df)
-    
+
     train_df = add_log_features(train_df)
     test_df = add_log_features(test_df)
 
@@ -28,6 +28,9 @@ def main():
 
     train_scored = compute_score_with_scaler(train_df, scaler)
     test_scored = compute_score_with_scaler(test_df, scaler)
+
+    train_scored = train_scored.dropna(subset=["ScorFinal"]).copy()
+    test_scored = test_scored.dropna(subset=["ScorFinal"]).copy()
 
     threshold = float(train_scored["ScorFinal"].quantile(0.75))
 
@@ -40,7 +43,7 @@ def main():
 
     full_system = Pipeline([
         ("preprocessor", build_preprocessing_pipeline()),
-        ("classifier", RandomForestClassifier(n_estimators=200, random_state=42))
+        ("classifier", LogisticRegression(max_iter=1000, random_state=42))
     ])
 
     full_system.fit(train_labeled[MODEL_FEATURES], train_labeled["Merita"])
@@ -59,7 +62,7 @@ def main():
         "score_scaler": scaler
     }
 
-    out_path = models_dir / "bundle_v1.joblib"
+    out_path = models_dir / "bundle_logreg_v1.joblib"
     joblib.dump(bundle, out_path)
 
     print(f"Model salvat în: {out_path}")

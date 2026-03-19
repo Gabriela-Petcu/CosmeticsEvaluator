@@ -7,7 +7,7 @@ RAW_DIR = DATA_DIR / "Raw"
 PROCESSED_DIR = DATA_DIR / "Processed"
 
 MODELS_DIR = PROJECT_ROOT / "Models"
-MODEL_PATH = MODELS_DIR / "bundle_v1.joblib"
+MODEL_PATH = MODELS_DIR / "bundle_logreg_v1.joblib"
 
 RAW_SKINCARE_DV = RAW_DIR / "skincare_df.csv"
 

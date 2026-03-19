@@ -35,6 +35,7 @@ def prepare_baseline_dataframe(df: pd.DataFrame, bundle: dict[str, Any]) -> pd.D
     df = add_engineered_features(df)
     df = add_log_features(df)
     df = compute_score_with_scaler(df, scaler)
+    df = df.dropna(subset=["ScorFinal"]).copy()
     df = label_with_threshold(df, threshold)
 
     return df
