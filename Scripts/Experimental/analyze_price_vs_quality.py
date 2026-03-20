@@ -1,5 +1,6 @@
 import pandas as pd
 
+from Src.inference import load_bundle
 from Src.io import load_skincare_dv
 from Src.scoring import add_log_features, compute_score_with_scaler
 from Src.feature_engineering import add_engineered_features
@@ -13,7 +14,9 @@ def prepare_dataset():
     df = add_engineered_features(df)
     df = add_log_features(df)
 
-    scaler = ScoreScaler().fit(df, cols=SCORE_COLUMNS)
+    bundle = load_bundle()
+    scaler = bundle["score_scaler"]
+
     df = compute_score_with_scaler(df, scaler)
 
     df = df.dropna(subset=["ScorFinal", "price_per_ounce"]).copy()
@@ -28,6 +31,7 @@ def analyze_price_vs_quality(df: pd.DataFrame):
     correlation = df["price_per_ounce"].corr(df["ScorFinal"])
     print(f"\nCorrelation (price vs quality): {correlation:.4f}")
 
+    df = df[df["price_per_ounce"] > 0].copy()
     # produse cu cel mai bun raport calitate / pret
     df["value_ratio"] = df["ScorFinal"] / df["price_per_ounce"]
 

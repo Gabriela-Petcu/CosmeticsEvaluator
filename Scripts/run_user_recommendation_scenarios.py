@@ -1,6 +1,6 @@
 import pandas as pd
 
-from Src.inference import build_full_analysis_df
+from Src.inference import build_baseline_ml_analysis_df
 from Src.config import PROCESSED_DIR
 from Src.user_profile import UserProfile
 from Src.user_matching import match_product_to_user
@@ -23,8 +23,10 @@ def find_product(df: pd.DataFrame, brand_contains: str, name_contains: str) -> p
 
 def build_row(user: UserProfile, product: pd.Series) -> dict:
     match_result = match_product_to_user(user, product)
+
     final_result = build_final_recommendation(
-        merita=int(product["MeritaML"]),
+        merita=int(product["Merita"]),
+        merita_ml=int(product["MeritaML"]),
         se_potriveste=match_result.SePotriveste
     )
 
@@ -44,8 +46,8 @@ def build_row(user: UserProfile, product: pd.Series) -> dict:
         "SePotriveste": match_result.SePotriveste,
         "VerdictFinal": final_result.verdict,
         "ExplicatieFinala": final_result.explanation,
-        "MotivePozitive": " | ".join(match_result.ReasonsPositive),
-        "MotiveNegative": " | ".join(match_result.ReasonsNegative),
+        "MotivePozitive": " | ".join(match_result.PositiveSignals),
+        "MotiveNegative": " | ".join(match_result.NegativeSignals),
     }
 
 
@@ -70,7 +72,7 @@ def print_scenario_result(index: int, row: dict) -> None:
 
 
 def main():
-    df = build_full_analysis_df()
+    df = build_baseline_ml_analysis_df()
 
     scenarios = [
         {
@@ -124,7 +126,7 @@ def main():
     for i, row in enumerate(rows, start=1):
         print_scenario_result(i, row)
 
-    print(f"\n Saved to: {output_path}")
+    print(f"\nSaved to: {output_path}")
 
 
 if __name__ == "__main__":

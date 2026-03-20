@@ -1,20 +1,27 @@
 from __future__ import annotations
+
 import numpy as np
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, MinMaxScaler, StandardScaler
+
 from Src.config import LOG_FEATURE_COLUMNS, STANDARD_FEATURE_COLUMNS
 
 
 def build_preprocessing_pipeline(
-    log_feature_columns=None,
-    standard_feature_columns=None
+    log_feature_columns: list[str] | None = None,
+    standard_feature_columns: list[str] | None = None
 ) -> ColumnTransformer:
     """
-    Pipeline de preprocessing: tratarea valorilor lipsă,
-    transformarea variabilelor și scalarea lor.
-    Dacă nu se transmit liste de coloane, se folosesc cele din config.py.
+    Construiește pipeline-ul de preprocessing pentru modelul ML.
+
+    Include:
+    - imputarea valorilor lipsă
+    - transformarea logaritmică pentru variabilele de tip count
+    - scalarea feature-urilor numerice
+
+    Dacă nu se transmit liste de coloane, se folosesc cele definite în config.py.
     """
     if log_feature_columns is None:
         log_feature_columns = LOG_FEATURE_COLUMNS

@@ -1,12 +1,12 @@
 import pandas as pd
 
-from Src.inference import build_full_analysis_df
+from Src.inference import build_baseline_ml_analysis_df
 from Src.config import PROCESSED_DIR
 
 
 def main():
-    print("Loading full analysis dataset...")
-    df_labeled = build_full_analysis_df()
+    print("Loading baseline+ml analysis dataset...")
+    df_labeled = build_baseline_ml_analysis_df()
 
     df_labeled["Disagreement"] = df_labeled["Merita"] != df_labeled["MeritaML"]
 

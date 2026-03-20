@@ -1,8 +1,8 @@
 import pandas as pd
 
 from Src.explainability import explain_product, explanation_to_dict
-from Src.config import PROCESSED_DIR, MODEL_FEATURES
-from Src.inference import build_full_analysis_df, load_bundle
+from Src.config import PROCESSED_DIR
+from Src.inference import build_baseline_ml_analysis_df, load_bundle
 
 
 def pick_examples(df: pd.DataFrame) -> pd.DataFrame:
@@ -41,11 +41,11 @@ def build_explanations_table(examples_df: pd.DataFrame) -> pd.DataFrame:
     rows = []
 
     for _, row in examples_df.iterrows():
-        product_input = row[MODEL_FEATURES].to_dict()
+        product_input = row.to_dict()
         explanation = explain_product(product_input)
         explanation_dict = explanation_to_dict(explanation)
 
-        top_factors = explanation_dict["TopFactori"]
+        top_factors = explanation_dict["TopFactoriML"]
 
         rows.append({
             "brand": row.get("brand", ""),
@@ -75,7 +75,7 @@ def build_explanations_table(examples_df: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     print("Loading and analyzing full dataset...")
-    full_df = build_full_analysis_df()
+    full_df = build_baseline_ml_analysis_df()
 
     bundle = load_bundle()
     threshold = float(bundle["threshold"])

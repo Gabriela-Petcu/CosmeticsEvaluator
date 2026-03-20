@@ -1,5 +1,3 @@
-from pathlib import Path
-import sys
 import pandas as pd
 
 from sklearn.linear_model import LogisticRegression
@@ -16,11 +14,8 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
 
-from Src.config import MODEL_FEATURES, SCORE_COLUMNS
+from Src.config import MODEL_FEATURES, SCORE_COLUMNS, PROCESSED_DIR
 from Src.io import load_skincare_dv
 from Src.preprocessing import build_preprocessing_pipeline
 from Src.scoring import (
@@ -31,6 +26,14 @@ from Src.scoring import (
 )
 from Src.feature_engineering import add_engineered_features
 
+
+"""
+Script experimental pentru compararea mai multor algoritmi de clasificare
+în aceleași condiții de preprocessing și etichetare.
+
+Modelul oficial al aplicației rămâne Logistic Regression.
+Acest script este folosit doar pentru analiză comparativă.
+"""
 
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
@@ -108,8 +111,7 @@ def evaluate_model(model_name, pipeline, train_df, test_df):
         "Accuracy": accuracy,
         "Precision": precision,
         "Recall": recall,
-        "F1": f1,
-        "ConfusionMatrix": cm
+        "F1": f1
     }
 
 
@@ -143,19 +145,19 @@ def main():
         )
         results.append(result)
 
-    results_df = pd.DataFrame([
-        {
-            "Model": r["Model"],
-            "Accuracy": r["Accuracy"],
-            "Precision": r["Precision"],
-            "Recall": r["Recall"],
-            "F1": r["F1"]
-        }
-        for r in results
-    ])
+    results_df = pd.DataFrame(results)
+    results_df = results_df.sort_values(by="F1", ascending=False)
 
-    print("\n=== Rezumat comparativ ===")
-    print(results_df.sort_values(by="F1", ascending=False).to_string(index=False))
+    print("\n=== REZUMAT COMPARATIV ALGORITMI (EXPERIMENTAL) ===")
+    print(results_df.to_string(index=False))
+
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = PROCESSED_DIR / "algorithm_comparison.csv"
+    results_df.to_csv(out_path, index=False)
+
+    print(f"\nRezultatele comparative au fost salvate în: {out_path}")
+    print("Modelul oficial al aplicației rămâne Logistic Regression.")
+    print("Acest script este folosit doar pentru comparație experimentală între algoritmi.")
 
 
 if __name__ == "__main__":

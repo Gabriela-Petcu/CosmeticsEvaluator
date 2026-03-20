@@ -13,7 +13,7 @@ def read_summary_metric(df: pd.DataFrame, metric_name: str) -> float:
 def main():
     cv_summary_path = PROCESSED_DIR / "cross_validation_summary.csv"
     disagreements_path = PROCESSED_DIR / "disagreements_summary.csv"
-    importance_path = PROCESSED_DIR / "global_feature_importance.csv"
+    importance_path = PROCESSED_DIR / "feature_importance.csv"
     shap_examples_path = PROCESSED_DIR / "shap_examples.csv"
     recommendation_examples_path = PROCESSED_DIR / "user_recommendation_examples.csv"
 
@@ -50,11 +50,13 @@ def main():
         f"- Disagreements: {disagreement_count}",
         f"- Disagreement rate: {disagreement_rate:.4f}",
         "",
-        "## 3. Global feature importance",
+        "## 3. Logistic Regression feature importance",
     ]
 
     for _, row in top_features.iterrows():
-        lines.append(f"- {row['feature']}: {row['importance']:.6f}")
+        lines.append(
+            f"- {row['feature']}: coef={row['coefficient']:.6f}, abs_importance={row['abs_importance']:.6f}"
+        )
 
     lines += [
         "",

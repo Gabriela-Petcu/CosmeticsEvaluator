@@ -3,7 +3,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from Src.config import PROJECT_ROOT, SCORE_COLUMNS, MODEL_FEATURES
+from Src.config import MODELS_DIR, SCORE_COLUMNS, MODEL_FEATURES
 from Src.io import load_skincare_dv
 from Src.preprocessing import build_preprocessing_pipeline
 from Src.scoring import add_log_features, ScoreScaler, compute_score_with_scaler, label_with_threshold
@@ -53,8 +53,7 @@ def main():
     print("\nClassification report:\n", classification_report(test_labeled["Merita"], pred))
     print("Confusion matrix:\n", confusion_matrix(test_labeled["Merita"], pred))
 
-    models_dir = PROJECT_ROOT / "Models"
-    models_dir.mkdir(parents=True, exist_ok=True)
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
     bundle = {
         "full_system": full_system,
@@ -62,7 +61,7 @@ def main():
         "score_scaler": scaler
     }
 
-    out_path = models_dir / "bundle_logreg_v1.joblib"
+    out_path = MODELS_DIR / "bundle_logreg_v1.joblib"
     joblib.dump(bundle, out_path)
 
     print(f"Model salvat în: {out_path}")

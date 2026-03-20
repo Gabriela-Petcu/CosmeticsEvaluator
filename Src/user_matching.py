@@ -1,5 +1,18 @@
 from __future__ import annotations
 
+"""
+Modul euristic de potrivire produs-utilizator.
+
+Scorul de compatibilitate este calculat pe baza unor reguli definite manual,
+inspirate de caracteristici generale ale produselor și de profilul utilizatorului.
+
+Această componentă:
+- nu este un model ML antrenat
+- nu învață ponderi din date
+- nu produce probabilități statistice
+- folosește un sistem de reguli explicabil pentru compatibilitate
+"""
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -32,39 +45,68 @@ CATEGORY_COLUMNS = {
 class MatchResult:
     FitScore: int
     SePotriveste: int
-    ReasonsPositive: list[str]
-    ReasonsNegative: list[str]
+    PositiveSignals: list[str]
+    NegativeSignals: list[str]
 
-#verifica daca produsul apartine unei categorii
+
+# Verifică dacă produsul aparține unei categorii.
 def _get_category(product: pd.Series, key: str) -> int:
     col = CATEGORY_COLUMNS[key]
     if col not in product.index:
         return 0
     return int(product.get(col, 0))
 
-#verifica daca numele produsului contine cuvinte cheie (matte)
+
+# Verifică dacă denumirea produsului conține unul dintre keyword-urile date.
 def _name_contains(product_name: str, keywords: list[str]) -> bool:
     name = (product_name or "").lower()
     return any(keyword in name for keyword in keywords)
 
 
-def _apply_skin_type_rules(profile: UserProfile, product: pd.Series, score: int,
-                           reasons_pos: list[str], reasons_neg: list[str]) -> int:
+def _validate_category_columns(product: pd.Series) -> None:
+    available = [col for col in CATEGORY_COLUMNS.values() if col in product.index]
+    if not available:
+        raise ValueError(
+            "Produsul nu conține coloane de categorie. Modulul de user matching "
+            "are nevoie de aceste informații pentru a aplica regulile euristice."
+        )
+
+
+def _apply_skin_type_rules(
+    profile: UserProfile,
+    product: pd.Series,
+    score: int,
+    reasons_pos: list[str],
+    reasons_neg: list[str]
+) -> int:
     name = str(product.get("name", ""))
 
     if profile.skin_type == "oily":
-        if _get_category(product, "face_wash") or _get_category(product, "toners") or _get_category(product, "face_sunscreen") or _get_category(product, "acne_treatments"):
+        if (
+            _get_category(product, "face_wash")
+            or _get_category(product, "toners")
+            or _get_category(product, "face_sunscreen")
+            or _get_category(product, "acne_treatments")
+        ):
             score += 15
             reasons_pos.append("Categoria produsului este potrivită pentru ten gras.")
         if _name_contains(name, ["gel", "water", "matte", "oil-free"]):
             score += 10
-            reasons_pos.append("Denumirea produsului sugerează o textură mai lejeră, potrivită pentru ten gras.")
+            reasons_pos.append(
+                "Denumirea produsului sugerează o textură mai lejeră, potrivită pentru ten gras."
+            )
         if _get_category(product, "face_oils") or _get_category(product, "night_creams"):
             score -= 15
             reasons_neg.append("Categoria produsului poate fi prea grea pentru ten gras.")
 
     elif profile.skin_type == "dry":
-        if _get_category(product, "moisturizers") or _get_category(product, "moisturizer_treatments") or _get_category(product, "night_creams") or _get_category(product, "face_oils") or _get_category(product, "face_masks"):
+        if (
+            _get_category(product, "moisturizers")
+            or _get_category(product, "moisturizer_treatments")
+            or _get_category(product, "night_creams")
+            or _get_category(product, "face_oils")
+            or _get_category(product, "face_masks")
+        ):
             score += 15
             reasons_pos.append("Categoria produsului este potrivită pentru ten uscat.")
         if _name_contains(name, ["cream", "hydrat", "moistur", "dewy"]):
@@ -75,23 +117,40 @@ def _apply_skin_type_rules(profile: UserProfile, product: pd.Series, score: int,
             reasons_neg.append("Produsul nu pare relevant pentru nevoile unui ten uscat.")
 
     elif profile.skin_type == "combination":
-        if _get_category(product, "moisturizers") or _get_category(product, "face_wash") or _get_category(product, "toners") or _get_category(product, "face_sunscreen"):
+        if (
+            _get_category(product, "moisturizers")
+            or _get_category(product, "face_wash")
+            or _get_category(product, "toners")
+            or _get_category(product, "face_sunscreen")
+        ):
             score += 12
             reasons_pos.append("Categoria produsului este potrivită pentru ten mixt.")
         if _name_contains(name, ["gel", "water", "balance", "matte", "oil-free"]):
             score += 10
-            reasons_pos.append("Produsul pare să aibă o formulă ușoară, bună pentru ten mixt.")
+            reasons_pos.append(
+                "Produsul pare să aibă o formulă ușoară, bună pentru ten mixt."
+            )
         if _get_category(product, "face_oils"):
             score -= 8
-            reasons_neg.append("Produsul ar putea fi prea greu pentru anumite zone ale tenului mixt.")
+            reasons_neg.append(
+                "Produsul ar putea fi prea greu pentru anumite zone ale tenului mixt."
+            )
 
     elif profile.skin_type == "sensitive":
-        if _get_category(product, "moisturizers") or _get_category(product, "face_masks") or _get_category(product, "face_wash"):
+        if (
+            _get_category(product, "moisturizers")
+            or _get_category(product, "face_masks")
+            or _get_category(product, "face_wash")
+        ):
             score += 12
-            reasons_pos.append("Categoria produsului este relativ potrivită pentru ten sensibil.")
+            reasons_pos.append(
+                "Categoria produsului este relativ potrivită pentru ten sensibil."
+            )
         if _get_category(product, "exfoliators") or _get_category(product, "facial_peels"):
             score -= 18
-            reasons_neg.append("Categoria produsului poate fi prea agresivă pentru ten sensibil.")
+            reasons_neg.append(
+                "Categoria produsului poate fi prea agresivă pentru ten sensibil."
+            )
 
     elif profile.skin_type == "normal":
         score += 5
@@ -100,23 +159,42 @@ def _apply_skin_type_rules(profile: UserProfile, product: pd.Series, score: int,
     return score
 
 
-def _apply_concern_rules(profile: UserProfile, product: pd.Series, score: int,
-                         reasons_pos: list[str], reasons_neg: list[str]) -> int:
+def _apply_concern_rules(
+    profile: UserProfile,
+    product: pd.Series,
+    score: int,
+    reasons_pos: list[str],
+    reasons_neg: list[str]
+) -> int:
     name = str(product.get("name", ""))
 
     if profile.main_concern == "acne":
-        if _get_category(product, "acne_treatments") or _get_category(product, "face_wash") or _get_category(product, "toners"):
+        if (
+            _get_category(product, "acne_treatments")
+            or _get_category(product, "face_wash")
+            or _get_category(product, "toners")
+        ):
             score += 15
             reasons_pos.append("Produsul este relevant pentru nevoi asociate cu acneea.")
         if _name_contains(name, ["acne", "blemish", "clarifying", "oil-free", "matte"]):
             score += 10
-            reasons_pos.append("Denumirea produsului sugerează caracteristici utile pentru un profil acneic.")
+            reasons_pos.append(
+                "Denumirea produsului sugerează caracteristici utile pentru un profil acneic."
+            )
         if _get_category(product, "face_oils"):
             score -= 12
-            reasons_neg.append("Produsul poate fi mai puțin potrivit pentru un profil cu acnee.")
+            reasons_neg.append(
+                "Produsul poate fi mai puțin potrivit pentru un profil cu acnee."
+            )
 
     elif profile.main_concern == "dehydration":
-        if _get_category(product, "moisturizers") or _get_category(product, "night_creams") or _get_category(product, "face_masks") or _get_category(product, "face_oils") or _get_category(product, "mists_essences"):
+        if (
+            _get_category(product, "moisturizers")
+            or _get_category(product, "night_creams")
+            or _get_category(product, "face_masks")
+            or _get_category(product, "face_oils")
+            or _get_category(product, "mists_essences")
+        ):
             score += 15
             reasons_pos.append("Produsul este compatibil cu nevoia de hidratare.")
         if _name_contains(name, ["hydrat", "moistur", "dewy"]):
@@ -124,7 +202,12 @@ def _apply_concern_rules(profile: UserProfile, product: pd.Series, score: int,
             reasons_pos.append("Denumirea produsului sugerează un efect hidratant.")
 
     elif profile.main_concern == "anti_aging":
-        if _get_category(product, "anti_aging") or _get_category(product, "face_serums") or _get_category(product, "night_creams") or _get_category(product, "eye_treatments"):
+        if (
+            _get_category(product, "anti_aging")
+            or _get_category(product, "face_serums")
+            or _get_category(product, "night_creams")
+            or _get_category(product, "eye_treatments")
+        ):
             score += 15
             reasons_pos.append("Produsul este relevant pentru nevoi anti-aging.")
         if _name_contains(name, ["retinol", "peptide", "firm", "repair"]):
@@ -134,10 +217,14 @@ def _apply_concern_rules(profile: UserProfile, product: pd.Series, score: int,
     elif profile.main_concern == "dark_spots":
         if _get_category(product, "face_serums") or _get_category(product, "facial_peels"):
             score += 12
-            reasons_pos.append("Categoria produsului poate ajuta în rutina pentru pete pigmentare.")
+            reasons_pos.append(
+                "Categoria produsului poate ajuta în rutina pentru pete pigmentare."
+            )
         if _name_contains(name, ["bright", "vitamin c", "glow"]):
             score += 10
-            reasons_pos.append("Denumirea produsului sugerează luminozitate sau uniformizare.")
+            reasons_pos.append(
+                "Denumirea produsului sugerează luminozitate sau uniformizare."
+            )
 
     elif profile.main_concern == "redness":
         if _name_contains(name, ["cica", "calm", "repair", "soothing"]):
@@ -152,8 +239,13 @@ def _apply_concern_rules(profile: UserProfile, product: pd.Series, score: int,
     return score
 
 
-def _apply_budget_rules(profile: UserProfile, product: pd.Series, score: int,
-                        reasons_pos: list[str], reasons_neg: list[str]) -> int:
+def _apply_budget_rules(
+    profile: UserProfile,
+    product: pd.Series,
+    score: int,
+    reasons_pos: list[str],
+    reasons_neg: list[str]
+) -> int:
     price = product.get("price", None)
     price_per_ounce = product.get("price_per_ounce", None)
 
@@ -173,7 +265,9 @@ def _apply_budget_rules(profile: UserProfile, product: pd.Series, score: int,
 
         if pd.notna(price_per_ounce) and price_per_ounce > 50:
             score -= 10
-            reasons_neg.append("Raportul preț/cantitate este nefavorabil pentru un buget redus.")
+            reasons_neg.append(
+                "Raportul preț/cantitate este nefavorabil pentru un buget redus."
+            )
 
     elif profile.budget_level == "medium":
         if price <= 50:
@@ -185,14 +279,31 @@ def _apply_budget_rules(profile: UserProfile, product: pd.Series, score: int,
 
     elif profile.budget_level == "high":
         score += 3
-        reasons_pos.append("Bugetul ridicat permite accesul la acest produs fără restricții majore.")
+        reasons_pos.append(
+            "Bugetul ridicat permite accesul la acest produs fără restricții majore."
+        )
 
     return score
 
 
 def match_product_to_user(profile: UserProfile, product: pd.Series | dict[str, Any]) -> MatchResult:
+    """
+    Evaluează compatibilitatea dintre un produs și profilul utilizatorului
+    folosind un sistem euristic de reguli.
+
+    Scorul pornește de la 50 și este ajustat pe baza:
+    - tipului de ten
+    - preocupării principale
+    - nivelului de buget
+
+    Verdictul binar SePotriveste este obținut prin pragul euristic FitScore >= 60.
+    """
     if isinstance(product, dict):
         product = pd.Series(product)
+    elif not isinstance(product, pd.Series):
+        raise TypeError("product trebuie să fie dict sau pandas.Series")
+
+    _validate_category_columns(product)
 
     score = 50
     reasons_pos: list[str] = []
@@ -208,6 +319,6 @@ def match_product_to_user(profile: UserProfile, product: pd.Series | dict[str, A
     return MatchResult(
         FitScore=score,
         SePotriveste=se_potriveste,
-        ReasonsPositive=reasons_pos,
-        ReasonsNegative=reasons_neg
+        PositiveSignals=reasons_pos,
+        NegativeSignals=reasons_neg
     )

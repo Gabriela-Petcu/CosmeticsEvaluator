@@ -1,92 +1,139 @@
 import numpy as np
 import pandas as pd
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import StratifiedKFold, cross_validate
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 
 from Src.config import PROCESSED_DIR, SCORE_COLUMNS, MODEL_FEATURES
 from Src.io import load_skincare_dv
 from Src.preprocessing import build_preprocessing_pipeline
-from Src.scoring import add_log_features, ScoreScaler, compute_score_with_scaler, label_with_threshold
+from Src.scoring import (
+    add_log_features,
+    ScoreScaler,
+    compute_score_with_scaler,
+    label_with_threshold
+)
+from Src.feature_engineering import add_engineered_features
 
+
+RANDOM_STATE = 42
+N_SPLITS = 5
 
 def main():
-    df = load_skincare_dv()
-    #logica baseline
-    df = add_log_features(df)
-    scaler = ScoreScaler().fit(df, cols=SCORE_COLUMNS)
-    df_scored = compute_score_with_scaler(df, scaler)
-    threshold = float(df_scored["ScorFinal"].quantile(0.75))
-    df_labeled = label_with_threshold(df_scored, threshold)
+    df = load_skincare_dv().reset_index(drop=True)
 
-    X = df_labeled[MODEL_FEATURES].copy()
-    y = df_labeled["Merita"].copy()
+    # Pentru StratifiedKFold avem nevoie de o etichetă inițială de stratificare.
+    # Aceasta este folosită doar pentru împărțirea relativ echilibrată a datelor,
+    # nu pentru evaluarea finală pe folduri.
+    strat_df = add_engineered_features(df.copy())
+    strat_df = add_log_features(strat_df)
 
-    full_system = Pipeline([
-        ("preprocessor", build_preprocessing_pipeline()),
-        ("classifier", RandomForestClassifier(n_estimators=200, random_state=42))
-    ])
+    strat_scaler = ScoreScaler().fit(strat_df, cols=SCORE_COLUMNS)
+    strat_df = compute_score_with_scaler(strat_df, strat_scaler)
+    strat_df = strat_df.dropna(subset=["ScorFinal"]).copy()
 
-    #cross validation setup
+    strat_threshold = float(strat_df["ScorFinal"].quantile(0.75))
+    strat_df = label_with_threshold(strat_df, strat_threshold)
+
+    valid_indices = strat_df.index.to_numpy()
+    df_valid = df.loc[valid_indices].reset_index(drop=True)
+    y_strat = strat_df["Merita"].reset_index(drop=True)
+
     cv = StratifiedKFold(
-        n_splits=5,
+        n_splits=N_SPLITS,
         shuffle=True,
-        random_state=42
+        random_state=RANDOM_STATE
     )
 
-    scoring = {
-        "accuracy": "accuracy",
-        "precision": "precision",
-        "recall": "recall",
-        "f1": "f1"
-    }
+    fold_results = []
 
-    # 6. Run cross-validation
-    results = cross_validate(
-        estimator=full_system,
-        X=X,
-        y=y,
-        cv=cv,
-        scoring=scoring,
-        n_jobs=-1,
-        return_train_score=False
-    )
+    for fold_idx, (train_idx, val_idx) in enumerate(cv.split(df_valid, y_strat), start=1):
+        train_raw = df_valid.iloc[train_idx].copy()
+        val_raw = df_valid.iloc[val_idx].copy()
 
-    # 7. Build detailed results
-    folds_df = pd.DataFrame({
-        "fold": range(1, len(results["test_accuracy"]) + 1),
-        "accuracy": results["test_accuracy"],
-        "precision": results["test_precision"],
-        "recall": results["test_recall"],
-        "f1": results["test_f1"],
-    })
+        # 1. Pregătire train fold
+        train_prepared = add_engineered_features(train_raw)
+        train_prepared = add_log_features(train_prepared)
+
+        # 2. Fit ScoreScaler DOAR pe train fold
+        fold_scaler = ScoreScaler().fit(train_prepared, cols=SCORE_COLUMNS)
+
+        # 3. Calcul scor baseline pe train și val cu scaler-ul din train
+        train_scored = compute_score_with_scaler(train_prepared, fold_scaler)
+        val_prepared = add_engineered_features(val_raw)
+        val_prepared = add_log_features(val_prepared)
+        val_scored = compute_score_with_scaler(val_prepared, fold_scaler)
+
+        # 4. Elimină rândurile fără ScorFinal
+        train_scored = train_scored.dropna(subset=["ScorFinal"]).copy()
+        val_scored = val_scored.dropna(subset=["ScorFinal"]).copy()
+
+        # 5. Prag calculat DOAR pe train fold
+        fold_threshold = float(train_scored["ScorFinal"].quantile(0.75))
+
+        # 6. Etichetare train și val cu pragul din train fold
+        train_labeled = label_with_threshold(train_scored, fold_threshold)
+        val_labeled = label_with_threshold(val_scored, fold_threshold)
+
+        # 7. Seturi pentru ML
+        X_train = train_labeled[MODEL_FEATURES].copy()
+        y_train = train_labeled["Merita"].copy()
+
+        X_val = val_labeled[MODEL_FEATURES].copy()
+        y_val = val_labeled["Merita"].copy()
+
+        # 8. Pipeline oficial
+        full_system = Pipeline([
+            ("preprocessor", build_preprocessing_pipeline()),
+            ("classifier", LogisticRegression(max_iter=1000, random_state=RANDOM_STATE))
+        ])
+
+        full_system.fit(X_train, y_train)
+        y_pred = full_system.predict(X_val)
+
+        accuracy = accuracy_score(y_val, y_pred)
+        precision = precision_score(y_val, y_pred, zero_division=0)
+        recall = recall_score(y_val, y_pred, zero_division=0)
+        f1 = f1_score(y_val, y_pred, zero_division=0)
+
+        fold_results.append({
+            "fold": fold_idx,
+            "train_size": len(train_labeled),
+            "val_size": len(val_labeled),
+            "threshold": fold_threshold,
+            "accuracy": accuracy,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1
+        })
+
+    folds_df = pd.DataFrame(fold_results)
 
     summary_df = pd.DataFrame({
         "metric": ["accuracy", "precision", "recall", "f1"],
         "mean": [
-            np.mean(results["test_accuracy"]),
-            np.mean(results["test_precision"]),
-            np.mean(results["test_recall"]),
-            np.mean(results["test_f1"]),
+            folds_df["accuracy"].mean(),
+            folds_df["precision"].mean(),
+            folds_df["recall"].mean(),
+            folds_df["f1"].mean(),
         ],
         "std": [
-            np.std(results["test_accuracy"]),
-            np.std(results["test_precision"]),
-            np.std(results["test_recall"]),
-            np.std(results["test_f1"]),
+            folds_df["accuracy"].std(ddof=0),
+            folds_df["precision"].std(ddof=0),
+            folds_df["recall"].std(ddof=0),
+            folds_df["f1"].std(ddof=0),
         ],
     })
 
-    # 8. Print results
-    print("=== CROSS-VALIDATION RESULTS (5-FOLD) ===")
+    print("=== CROSS-VALIDATION RESULTS (5-FOLD, leakage-free) ===")
     print("\nPer-fold results:")
     print(folds_df.to_string(index=False))
 
     print("\nSummary:")
     print(summary_df.to_string(index=False))
 
-    # 9. Save results
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
     folds_path = PROCESSED_DIR / "cross_validation_folds.csv"
@@ -95,8 +142,8 @@ def main():
     folds_df.to_csv(folds_path, index=False)
     summary_df.to_csv(summary_path, index=False)
 
-    print(f"\n Per-fold results saved to: {folds_path}")
-    print(f" Summary results saved to: {summary_path}")
+    print(f"\nPer-fold results saved to: {folds_path}")
+    print(f"Summary results saved to: {summary_path}")
 
 
 if __name__ == "__main__":

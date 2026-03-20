@@ -1,13 +1,16 @@
 from pathlib import Path
+
 import pandas as pd
+
 from .config import RAW_SKINCARE_DV
 
 
 TEXT_COLUMNS_TO_CLEAN = ["brand", "name"]
 
-def _fix_mojibake_text(value):
+
+def _fix_mojibake_text(value: object) -> object:
     """
-    Încearcă să repare texte de tip mojibake, ex:
+    Încearcă să repare texte de tip mojibake, de exemplu:
     'Cr√®me Ancienne¬Æ' -> 'Crème Ancienne®'
     """
     if pd.isna(value):
@@ -53,7 +56,7 @@ def _clean_text_columns(df: pd.DataFrame) -> pd.DataFrame:
 def load_skincare_dv(path: str | Path = RAW_SKINCARE_DV) -> pd.DataFrame:
     """
     Încarcă dataset-ul skincare_df.csv într-un DataFrame și curăță
-    eventualele probleme de encoding pe coloanele text.
+    eventualele probleme de encoding de pe coloanele text relevante.
     """
     path = Path(path)
 
