@@ -41,6 +41,7 @@ class ScoreScaler:
         self.mins_ = {}
         self.maxs_ = {}
 
+    #min/max pt fiecare coloana din SC
     def fit(self, df: pd.DataFrame, cols: list[str]):
         missing = [c for c in cols if c not in df.columns]
         if missing:
@@ -59,6 +60,7 @@ class ScoreScaler:
 
         return self
 
+    #aplica normalizarea min-max învățată pe TRAIN
     def transform_series(self, s: pd.Series, col: str) -> pd.Series:
         if col not in self.mins_ or col not in self.maxs_:
             raise ValueError(

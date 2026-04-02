@@ -15,9 +15,7 @@ Această componentă:
 
 from dataclasses import dataclass
 from typing import Any
-
 import pandas as pd
-
 from Src.user_profile import UserProfile
 
 

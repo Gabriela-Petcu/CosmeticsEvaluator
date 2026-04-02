@@ -1,9 +1,6 @@
 from pathlib import Path
-
 import pandas as pd
-
 from .config import RAW_SKINCARE_DV
-
 
 TEXT_COLUMNS_TO_CLEAN = ["brand", "name"]
 

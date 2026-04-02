@@ -32,8 +32,8 @@ def main():
     train_scored = train_scored.dropna(subset=["ScorFinal"]).copy()
     test_scored = test_scored.dropna(subset=["ScorFinal"]).copy()
 
+    #construieste eticheta merita
     threshold = float(train_scored["ScorFinal"].quantile(0.75))
-
     train_labeled = label_with_threshold(train_scored, threshold)
     test_labeled = label_with_threshold(test_scored, threshold)
 

@@ -34,12 +34,14 @@ def add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
     review_score = out["review_score"]
     price_per_ounce = out["price_per_ounce"]
 
+    #scor de popularitate 
     out["popularity_score"] = np.log1p(reviews) + np.log1p(loves)
+    #scor bazat pe engagement (loves per review)
     out["engagement_score"] = loves / (reviews + 1)
-
+    #scor bazat pe calitate/pret
     safe_price = price_per_ounce.replace(0, np.nan)
     out["value_score"] = review_score / safe_price
-
+    #scor solid bazat pe review_score și numărul de review-uri
     out["review_strength"] = review_score * np.log1p(reviews)
     out = out.replace([np.inf, -np.inf], np.nan)
 
