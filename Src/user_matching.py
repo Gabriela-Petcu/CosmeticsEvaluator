@@ -15,7 +15,9 @@ Această componentă:
 
 from dataclasses import dataclass
 from typing import Any
+
 import pandas as pd
+
 from Src.user_profile import UserProfile
 
 
@@ -47,6 +49,238 @@ class MatchResult:
     NegativeSignals: list[str]
 
 
+SKIN_TYPE_RULES = {
+    "oily": {
+        "category_rules": [
+            {
+                "keys": ["face_wash", "toners", "face_sunscreen", "acne_treatments"],
+                "score": 15,
+                "message": "Categoria produsului este potrivită pentru ten gras.",
+                "positive": True,
+            },
+            {
+                "keys": ["face_oils", "night_creams"],
+                "score": -15,
+                "message": "Categoria produsului poate fi prea grea pentru ten gras.",
+                "positive": False,
+            },
+        ],
+        "keyword_rules": [
+            {
+                "keywords": ["gel", "water", "matte", "oil-free"],
+                "score": 10,
+                "message": (
+                    "Denumirea produsului sugerează o textură mai lejeră, "
+                    "potrivită pentru ten gras."
+                ),
+                "positive": True,
+            }
+        ],
+        "base_adjustment": None,
+    },
+    "dry": {
+        "category_rules": [
+            {
+                "keys": [
+                    "moisturizers",
+                    "moisturizer_treatments",
+                    "night_creams",
+                    "face_oils",
+                    "face_masks",
+                ],
+                "score": 15,
+                "message": "Categoria produsului este potrivită pentru ten uscat.",
+                "positive": True,
+            },
+            {
+                "keys": ["blotting_papers"],
+                "score": -10,
+                "message": "Produsul nu pare relevant pentru nevoile unui ten uscat.",
+                "positive": False,
+            },
+        ],
+        "keyword_rules": [
+            {
+                "keywords": ["cream", "hydrat", "moistur", "dewy"],
+                "score": 10,
+                "message": "Denumirea produsului sugerează hidratare sau nutriție.",
+                "positive": True,
+            }
+        ],
+        "base_adjustment": None,
+    },
+    "combination": {
+        "category_rules": [
+            {
+                "keys": ["moisturizers", "face_wash", "toners", "face_sunscreen"],
+                "score": 12,
+                "message": "Categoria produsului este potrivită pentru ten mixt.",
+                "positive": True,
+            },
+            {
+                "keys": ["face_oils"],
+                "score": -8,
+                "message": (
+                    "Produsul ar putea fi prea greu pentru anumite zone ale tenului mixt."
+                ),
+                "positive": False,
+            },
+        ],
+        "keyword_rules": [
+            {
+                "keywords": ["gel", "water", "balance", "matte", "oil-free"],
+                "score": 10,
+                "message": "Produsul pare să aibă o formulă ușoară, bună pentru ten mixt.",
+                "positive": True,
+            }
+        ],
+        "base_adjustment": None,
+    },
+    "sensitive": {
+        "category_rules": [
+            {
+                "keys": ["moisturizers", "face_masks", "face_wash"],
+                "score": 12,
+                "message": "Categoria produsului este relativ potrivită pentru ten sensibil.",
+                "positive": True,
+            },
+            {
+                "keys": ["exfoliators", "facial_peels"],
+                "score": -18,
+                "message": "Categoria produsului poate fi prea agresivă pentru ten sensibil.",
+                "positive": False,
+            },
+        ],
+        "keyword_rules": [],
+        "base_adjustment": None,
+    },
+    "normal": {
+        "category_rules": [],
+        "keyword_rules": [],
+        "base_adjustment": {
+            "score": 5,
+            "message": "Tenul normal este compatibil cu o gamă mai largă de produse.",
+            "positive": True,
+        },
+    },
+}
+
+
+CONCERN_RULES = {
+    "acne": {
+        "category_rules": [
+            {
+                "keys": ["acne_treatments", "face_wash", "toners"],
+                "score": 15,
+                "message": "Produsul este relevant pentru nevoi asociate cu acneea.",
+                "positive": True,
+            },
+            {
+                "keys": ["face_oils"],
+                "score": -12,
+                "message": "Produsul poate fi mai puțin potrivit pentru un profil cu acnee.",
+                "positive": False,
+            },
+        ],
+        "keyword_rules": [
+            {
+                "keywords": ["acne", "blemish", "clarifying", "oil-free", "matte"],
+                "score": 10,
+                "message": (
+                    "Denumirea produsului sugerează caracteristici utile "
+                    "pentru un profil acneic."
+                ),
+                "positive": True,
+            }
+        ],
+    },
+    "dehydration": {
+        "category_rules": [
+            {
+                "keys": [
+                    "moisturizers",
+                    "night_creams",
+                    "face_masks",
+                    "face_oils",
+                    "mists_essences",
+                ],
+                "score": 15,
+                "message": "Produsul este compatibil cu nevoia de hidratare.",
+                "positive": True,
+            }
+        ],
+        "keyword_rules": [
+            {
+                "keywords": ["hydrat", "moistur", "dewy"],
+                "score": 10,
+                "message": "Denumirea produsului sugerează un efect hidratant.",
+                "positive": True,
+            }
+        ],
+    },
+    "anti_aging": {
+        "category_rules": [
+            {
+                "keys": ["anti_aging", "face_serums", "night_creams", "eye_treatments"],
+                "score": 15,
+                "message": "Produsul este relevant pentru nevoi anti-aging.",
+                "positive": True,
+            }
+        ],
+        "keyword_rules": [
+            {
+                "keywords": ["retinol", "peptide", "firm", "repair"],
+                "score": 10,
+                "message": "Denumirea produsului sugerează efect anti-aging.",
+                "positive": True,
+            }
+        ],
+    },
+    "dark_spots": {
+        "category_rules": [
+            {
+                "keys": ["face_serums", "facial_peels"],
+                "score": 12,
+                "message": (
+                    "Categoria produsului poate ajuta în rutina pentru pete pigmentare."
+                ),
+                "positive": True,
+            }
+        ],
+        "keyword_rules": [
+            {
+                "keywords": ["bright", "vitamin c", "glow"],
+                "score": 10,
+                "message": "Denumirea produsului sugerează luminozitate sau uniformizare.",
+                "positive": True,
+            }
+        ],
+    },
+    "redness": {
+        "category_rules": [],
+        "keyword_rules": [
+            {
+                "keywords": ["cica", "calm", "repair", "soothing"],
+                "score": 10,
+                "message": "Denumirea produsului sugerează efect calmant.",
+                "positive": True,
+            }
+        ],
+    },
+    "dullness": {
+        "category_rules": [],
+        "keyword_rules": [
+            {
+                "keywords": ["glow", "bright", "radiance"],
+                "score": 10,
+                "message": "Denumirea produsului sugerează efect de luminozitate.",
+                "positive": True,
+            }
+        ],
+    },
+}
+
+
 # Verifică dacă produsul aparține unei categorii.
 def _get_category(product: pd.Series, key: str) -> int:
     col = CATEGORY_COLUMNS[key]
@@ -70,6 +304,60 @@ def _validate_category_columns(product: pd.Series) -> None:
         )
 
 
+def _append_reason(
+    positive: bool,
+    message: str,
+    reasons_pos: list[str],
+    reasons_neg: list[str],
+) -> None:
+    if positive:
+        reasons_pos.append(message)
+    else:
+        reasons_neg.append(message)
+
+
+def _apply_category_rules(
+    product: pd.Series,
+    score: int,
+    reasons_pos: list[str],
+    reasons_neg: list[str],
+    rules: list[dict[str, Any]],
+) -> int:
+    for rule in rules:
+        if any(_get_category(product, key) for key in rule["keys"]):
+            score += rule["score"]
+            _append_reason(rule["positive"], rule["message"], reasons_pos, reasons_neg)
+    return score
+
+
+def _apply_keyword_rules(
+    product_name: str,
+    score: int,
+    reasons_pos: list[str],
+    reasons_neg: list[str],
+    rules: list[dict[str, Any]],
+) -> int:
+    for rule in rules:
+        if _name_contains(product_name, rule["keywords"]):
+            score += rule["score"]
+            _append_reason(rule["positive"], rule["message"], reasons_pos, reasons_neg)
+    return score
+
+
+def _apply_base_adjustment(
+    score: int,
+    reasons_pos: list[str],
+    reasons_neg: list[str],
+    adjustment: dict[str, Any] | None,
+) -> int:
+    if adjustment is None:
+        return score
+
+    score += adjustment["score"]
+    _append_reason(adjustment["positive"], adjustment["message"], reasons_pos, reasons_neg)
+    return score
+
+
 def _apply_skin_type_rules(
     profile: UserProfile,
     product: pd.Series,
@@ -78,81 +366,31 @@ def _apply_skin_type_rules(
     reasons_neg: list[str]
 ) -> int:
     name = str(product.get("name", ""))
+    rules = SKIN_TYPE_RULES.get(profile.skin_type)
 
-    if profile.skin_type == "oily":
-        if (
-            _get_category(product, "face_wash")
-            or _get_category(product, "toners")
-            or _get_category(product, "face_sunscreen")
-            or _get_category(product, "acne_treatments")
-        ):
-            score += 15
-            reasons_pos.append("Categoria produsului este potrivită pentru ten gras.")
-        if _name_contains(name, ["gel", "water", "matte", "oil-free"]):
-            score += 10
-            reasons_pos.append(
-                "Denumirea produsului sugerează o textură mai lejeră, potrivită pentru ten gras."
-            )
-        if _get_category(product, "face_oils") or _get_category(product, "night_creams"):
-            score -= 15
-            reasons_neg.append("Categoria produsului poate fi prea grea pentru ten gras.")
+    if rules is None:
+        return score
 
-    elif profile.skin_type == "dry":
-        if (
-            _get_category(product, "moisturizers")
-            or _get_category(product, "moisturizer_treatments")
-            or _get_category(product, "night_creams")
-            or _get_category(product, "face_oils")
-            or _get_category(product, "face_masks")
-        ):
-            score += 15
-            reasons_pos.append("Categoria produsului este potrivită pentru ten uscat.")
-        if _name_contains(name, ["cream", "hydrat", "moistur", "dewy"]):
-            score += 10
-            reasons_pos.append("Denumirea produsului sugerează hidratare sau nutriție.")
-        if _get_category(product, "blotting_papers"):
-            score -= 10
-            reasons_neg.append("Produsul nu pare relevant pentru nevoile unui ten uscat.")
-
-    elif profile.skin_type == "combination":
-        if (
-            _get_category(product, "moisturizers")
-            or _get_category(product, "face_wash")
-            or _get_category(product, "toners")
-            or _get_category(product, "face_sunscreen")
-        ):
-            score += 12
-            reasons_pos.append("Categoria produsului este potrivită pentru ten mixt.")
-        if _name_contains(name, ["gel", "water", "balance", "matte", "oil-free"]):
-            score += 10
-            reasons_pos.append(
-                "Produsul pare să aibă o formulă ușoară, bună pentru ten mixt."
-            )
-        if _get_category(product, "face_oils"):
-            score -= 8
-            reasons_neg.append(
-                "Produsul ar putea fi prea greu pentru anumite zone ale tenului mixt."
-            )
-
-    elif profile.skin_type == "sensitive":
-        if (
-            _get_category(product, "moisturizers")
-            or _get_category(product, "face_masks")
-            or _get_category(product, "face_wash")
-        ):
-            score += 12
-            reasons_pos.append(
-                "Categoria produsului este relativ potrivită pentru ten sensibil."
-            )
-        if _get_category(product, "exfoliators") or _get_category(product, "facial_peels"):
-            score -= 18
-            reasons_neg.append(
-                "Categoria produsului poate fi prea agresivă pentru ten sensibil."
-            )
-
-    elif profile.skin_type == "normal":
-        score += 5
-        reasons_pos.append("Tenul normal este compatibil cu o gamă mai largă de produse.")
+    score = _apply_base_adjustment(
+        score,
+        reasons_pos,
+        reasons_neg,
+        rules.get("base_adjustment"),
+    )
+    score = _apply_category_rules(
+        product,
+        score,
+        reasons_pos,
+        reasons_neg,
+        rules.get("category_rules", []),
+    )
+    score = _apply_keyword_rules(
+        name,
+        score,
+        reasons_pos,
+        reasons_neg,
+        rules.get("keyword_rules", []),
+    )
 
     return score
 
@@ -165,74 +403,25 @@ def _apply_concern_rules(
     reasons_neg: list[str]
 ) -> int:
     name = str(product.get("name", ""))
+    rules = CONCERN_RULES.get(profile.main_concern)
 
-    if profile.main_concern == "acne":
-        if (
-            _get_category(product, "acne_treatments")
-            or _get_category(product, "face_wash")
-            or _get_category(product, "toners")
-        ):
-            score += 15
-            reasons_pos.append("Produsul este relevant pentru nevoi asociate cu acneea.")
-        if _name_contains(name, ["acne", "blemish", "clarifying", "oil-free", "matte"]):
-            score += 10
-            reasons_pos.append(
-                "Denumirea produsului sugerează caracteristici utile pentru un profil acneic."
-            )
-        if _get_category(product, "face_oils"):
-            score -= 12
-            reasons_neg.append(
-                "Produsul poate fi mai puțin potrivit pentru un profil cu acnee."
-            )
+    if rules is None:
+        return score
 
-    elif profile.main_concern == "dehydration":
-        if (
-            _get_category(product, "moisturizers")
-            or _get_category(product, "night_creams")
-            or _get_category(product, "face_masks")
-            or _get_category(product, "face_oils")
-            or _get_category(product, "mists_essences")
-        ):
-            score += 15
-            reasons_pos.append("Produsul este compatibil cu nevoia de hidratare.")
-        if _name_contains(name, ["hydrat", "moistur", "dewy"]):
-            score += 10
-            reasons_pos.append("Denumirea produsului sugerează un efect hidratant.")
-
-    elif profile.main_concern == "anti_aging":
-        if (
-            _get_category(product, "anti_aging")
-            or _get_category(product, "face_serums")
-            or _get_category(product, "night_creams")
-            or _get_category(product, "eye_treatments")
-        ):
-            score += 15
-            reasons_pos.append("Produsul este relevant pentru nevoi anti-aging.")
-        if _name_contains(name, ["retinol", "peptide", "firm", "repair"]):
-            score += 10
-            reasons_pos.append("Denumirea produsului sugerează efect anti-aging.")
-
-    elif profile.main_concern == "dark_spots":
-        if _get_category(product, "face_serums") or _get_category(product, "facial_peels"):
-            score += 12
-            reasons_pos.append(
-                "Categoria produsului poate ajuta în rutina pentru pete pigmentare."
-            )
-        if _name_contains(name, ["bright", "vitamin c", "glow"]):
-            score += 10
-            reasons_pos.append(
-                "Denumirea produsului sugerează luminozitate sau uniformizare."
-            )
-
-    elif profile.main_concern == "redness":
-        if _name_contains(name, ["cica", "calm", "repair", "soothing"]):
-            score += 10
-            reasons_pos.append("Denumirea produsului sugerează efect calmant.")
-
-    elif profile.main_concern == "dullness":
-        if _name_contains(name, ["glow", "bright", "radiance"]):
-            score += 10
-            reasons_pos.append("Denumirea produsului sugerează efect de luminozitate.")
+    score = _apply_category_rules(
+        product,
+        score,
+        reasons_pos,
+        reasons_neg,
+        rules.get("category_rules", []),
+    )
+    score = _apply_keyword_rules(
+        name,
+        score,
+        reasons_pos,
+        reasons_neg,
+        rules.get("keyword_rules", []),
+    )
 
     return score
 
@@ -320,3 +509,6 @@ def match_product_to_user(profile: UserProfile, product: pd.Series | dict[str, A
         PositiveSignals=reasons_pos,
         NegativeSignals=reasons_neg
     )
+
+
+
