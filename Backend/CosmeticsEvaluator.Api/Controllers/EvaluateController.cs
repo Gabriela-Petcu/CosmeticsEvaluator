@@ -19,7 +19,7 @@ namespace CosmeticsEvaluator.Api.Controllers
             _context = context;
         }
 
-        // 1. Evaluare manuală (cea veche, utilă pentru testare rapidă)
+        // 1. Evaluare manuală (folosește datele trimise de utilizator în JSON)
         [HttpPost]
         public async Task<IActionResult> EvaluateProduct([FromBody] ProductEvaluationRequest request)
         {
@@ -30,17 +30,23 @@ namespace CosmeticsEvaluator.Api.Controllers
 
             string verdict = result.ml.merita_ml ? "Produs Recomandat" : "Nu este recomandat";
 
+            // SALVĂM ÎN ISTORIC folosind datele din 'request'
             var entry = new EvaluationEntry
             {
                 ProductId = request.ProductId,
+                Name = request.ProductId, // În modul manual, punem ID-ul ca nume
+                Brand = "Manual Entry",    // Nu avem brand în request-ul manual
                 ReviewScore = request.Data.review_score,
+                NOfReviews = request.Data.n_of_reviews,
+                NOfLoves = request.Data.n_of_loves,
+                PricePerOunce = request.Data.price_per_ounce,
                 MlProbability = result.ml.probability,
                 FinalVerdict = verdict,
                 CreatedAt = DateTime.Now
             };
 
             _context.EvaluationHistory.Add(entry);
-            await _context.SaveChangesAsync(); 
+            await _context.SaveChangesAsync();
 
             return Ok(new { 
                 OriginalResult = result, 
@@ -49,7 +55,7 @@ namespace CosmeticsEvaluator.Api.Controllers
             });
         }
 
-        // 2. Aduce istoricul evaluărilor pentru tabelul din React
+        // 2. Istoric
         [HttpGet("history")]
         public async Task<IActionResult> GetHistory()
         {
@@ -59,7 +65,7 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(history);
         }
 
-        // 3. Aduce lista de produse din CATALOG pentru Dropdown-ul din React
+        // 3. Produse din Catalog
         [HttpGet("products")]
         public async Task<IActionResult> GetProducts()
         {
@@ -69,7 +75,7 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(products);
         }
 
-        // 4. Evaluare inteligentă: utilizatorul alege doar ID-ul, noi luăm datele tehnice din DB
+        // 4. Evaluare inteligentă (folosește datele din baza de date)
         [HttpPost("evaluate-by-id/{id}")]
         public async Task<IActionResult> EvaluateById(int id)
         {
@@ -93,17 +99,24 @@ namespace CosmeticsEvaluator.Api.Controllers
 
             string verdict = result.ml.merita_ml ? "Produs Recomandat" : "Nu este recomandat";
 
+            // SALVĂM ÎN ISTORIC folosind datele din 'product' găsit în DB
             var entry = new EvaluationEntry
             {
                 ProductId = product.Name,
+                Name = product.Name,
+                Brand = product.Brand,
                 ReviewScore = product.ReviewScore,
+                NOfReviews = product.NOfReviews,
+                NOfLoves = product.NOfLoves,
+                Price = product.Price,
+                PricePerOunce = product.PricePerOunce,
                 MlProbability = result.ml.probability,
                 FinalVerdict = verdict,
                 CreatedAt = DateTime.Now
             };
 
             _context.EvaluationHistory.Add(entry);
-            await _context.SaveChangesAsync(); 
+            await _context.SaveChangesAsync();
 
             return Ok(new { 
                 OriginalResult = result, 
