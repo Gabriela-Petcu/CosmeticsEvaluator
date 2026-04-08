@@ -36,7 +36,7 @@ namespace CosmeticsEvaluator.Api.Controllers
             {
                 Email = request.Email,
                 PasswordHash = hashedPassword,
-                Role = "Admin" 
+                Role = "User" 
             };
 
             _context.Users.Add(user);

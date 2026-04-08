@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CosmeticsEvaluator.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+166e2145aa074e71b2841704e56cf435d7e92f66")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dd8ec47edf28e3f2b57378a9b7ca7e89c0e35f39")]
 [assembly: System.Reflection.AssemblyProductAttribute("CosmeticsEvaluator.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CosmeticsEvaluator.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
