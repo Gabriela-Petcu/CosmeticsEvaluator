@@ -3,6 +3,7 @@ using CosmeticsEvaluator.Api.Services;
 using CosmeticsEvaluator.Api.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CosmeticsEvaluator.Api.Controllers
 {
@@ -56,6 +57,7 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
 
         // 2. Istoric
+        [Authorize]
         [HttpGet("history")]
         public async Task<IActionResult> GetHistory()
         {

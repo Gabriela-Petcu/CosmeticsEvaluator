@@ -2,7 +2,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CosmeticsEvaluator.Api.Data;
 using CosmeticsEvaluator.Api.Models;
-using BCrypt.Net;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace CosmeticsEvaluator.Api.Controllers
 {
@@ -11,29 +14,29 @@ namespace CosmeticsEvaluator.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IConfiguration _config; // Adăugat pentru acces la appsettings.json
 
-        public AuthController(AppDbContext context)
+        public AuthController(AppDbContext context, IConfiguration config)
         {
             _context = context;
+            _config = config;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            // Verificăm dacă utilizatorul există deja
             if (await _context.Users.AnyAsync(u => u.Email == request.Email))
             {
                 return BadRequest("Acest email este deja utilizat.");
             }
 
-            // CRIPTARE PAROLĂ: Transformăm "parola123" în ceva de tip "$2a$11$..."
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
             var user = new User
             {
                 Email = request.Email,
                 PasswordHash = hashedPassword,
-                Role = "User" // Primul cont creat va fi User. Putem schimba manual în DB în "Admin"
+                Role = "User" 
             };
 
             _context.Users.Add(user);
@@ -52,13 +55,31 @@ namespace CosmeticsEvaluator.Api.Controllers
                 return Unauthorized("Email sau parolă incorectă.");
             }
 
-            // Momentan returnăm datele utilizatorului. 
-            // Pasul următor va fi să generăm un Token JWT aici.
+            // GENERARE TOKEN JWT
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes(_config["Jwt:Key"]); 
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.Name, user.Email),
+                    new Claim(ClaimTypes.Role, user.Role)
+                }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                Issuer = _config["Jwt:Issuer"],
+                Audience = _config["Jwt:Audience"],
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var tokenString = tokenHandler.WriteToken(token);
+
             return Ok(new { 
-                id = user.Id, 
-                email = user.Email, 
-                role = user.Role,
-                message = "Autentificare reușită!" 
+                Token = tokenString, 
+                Email = user.Email, 
+                Role = user.Role,
+                Message = "Autentificare reușită!"
             });
         }
     }
