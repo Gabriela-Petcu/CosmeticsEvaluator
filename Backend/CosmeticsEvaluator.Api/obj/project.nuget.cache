@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "pkLKgxFNdzA=",
+  "dgSpecHash": "7waFWsFLq+I=",
   "success": true,
   "projectFilePath": "D:\\Facultate\\Licenta\\aplicatie\\CosmeticsEvaluator\\Backend\\CosmeticsEvaluator.Api\\CosmeticsEvaluator.Api.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\user\\.nuget\\packages\\bcrypt.net-next\\4.1.0\\bcrypt.net-next.4.1.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\7.0.0\\microsoft.bcl.asyncinterfaces.7.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.build.framework\\17.8.3\\microsoft.build.framework.17.8.3.nupkg.sha512",

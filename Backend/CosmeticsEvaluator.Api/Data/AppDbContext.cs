@@ -9,5 +9,6 @@ namespace CosmeticsEvaluator.Api.Data
 
         public DbSet<EvaluationEntry> EvaluationHistory { get; set; }
         public DbSet<ProductCatalog> ProductCatalog { get; set; }
+        public DbSet<User> Users { get; set; }
     }
 }

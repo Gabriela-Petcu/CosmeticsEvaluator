@@ -146,3 +146,4 @@ D:\Facultate\Licenta\aplicatie\CosmeticsEvaluator\Backend\CosmeticsEvaluator.Api
 D:\Facultate\Licenta\aplicatie\CosmeticsEvaluator\Backend\CosmeticsEvaluator.Api\bin\Debug\net9.0\runtimes\win-arm64\native\e_sqlite3.dll
 D:\Facultate\Licenta\aplicatie\CosmeticsEvaluator\Backend\CosmeticsEvaluator.Api\bin\Debug\net9.0\runtimes\win-x64\native\e_sqlite3.dll
 D:\Facultate\Licenta\aplicatie\CosmeticsEvaluator\Backend\CosmeticsEvaluator.Api\bin\Debug\net9.0\runtimes\win-x86\native\e_sqlite3.dll
+D:\Facultate\Licenta\aplicatie\CosmeticsEvaluator\Backend\CosmeticsEvaluator.Api\bin\Debug\net9.0\BCrypt.Net-Next.dll
