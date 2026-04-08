@@ -8,6 +8,7 @@ namespace CosmeticsEvaluator.Api.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    
     [Authorize(Roles = "Admin")] // Doar Adminul are acces la TOT controllerul
     public class ProductController : ControllerBase
     {
