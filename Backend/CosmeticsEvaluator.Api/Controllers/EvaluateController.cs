@@ -4,6 +4,7 @@ using CosmeticsEvaluator.Api.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace CosmeticsEvaluator.Api.Controllers
 {
@@ -21,31 +22,35 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
 
         [Authorize]
-        // 1. Evaluare manuală (folosește datele trimise de utilizator în JSON)
         [HttpPost]
         public async Task<IActionResult> EvaluateProduct([FromBody] ProductEvaluationRequest request)
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+            // 1. Extrage ID-ul userului
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+            int userId = int.Parse(userIdClaim);
 
+            // 2. Apelează serviciul ML
             var result = await _mlService.GetPredictionAsync(request);
             
             if (result == null) 
                 return StatusCode(500, "Nu s-a putut contacta serviciul ML Python.");
 
-            string verdict = result.ml.merita_ml ? "Produs Recomandat" : "Nu este recomandat";
+            // 3. Folosește verdictul venit direct din noul Pipeline Python
+            string verdict = result.VerdictFinal;
 
-            // SALVĂM ÎN ISTORIC folosind datele din 'request'
+            // 4. Salvează în istoric
             var entry = new EvaluationEntry
             {
                 UserId = userId,
                 ProductId = request.ProductId,
-                Name = request.ProductId, // În modul manual, punem ID-ul ca nume
-                Brand = "Manual Entry",    // Nu avem brand în request-ul manual
+                Name = request.ProductId, 
+                Brand = "Manual Entry",    
                 ReviewScore = request.Data.review_score,
                 NOfReviews = request.Data.n_of_reviews,
                 NOfLoves = request.Data.n_of_loves,
                 PricePerOunce = request.Data.price_per_ounce,
-                MlProbability = result.ml.probability,
+                MlProbability = result.ProbabilitateML,
                 FinalVerdict = verdict,
                 CreatedAt = DateTime.Now
             };
@@ -60,26 +65,24 @@ namespace CosmeticsEvaluator.Api.Controllers
             });
         }
 
-        // 2. Istoric
         [Authorize]
-[HttpGet("history")]
-public async Task<IActionResult> GetHistory()
-{
-    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
-    
-    var userId = int.Parse(userIdClaim);
+        [HttpGet("history")]
+        public async Task<IActionResult> GetHistory()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+            
+            var userId = int.Parse(userIdClaim);
 
-    var history = await _context.EvaluationHistory
-        .Where(x => x.UserId == userId) // <--- ADAUGĂ ASTA
-        .OrderByDescending(x => x.CreatedAt)
-        .ToListAsync();
-        
-    return Ok(history);
-}
+            var history = await _context.EvaluationHistory
+                .Where(x => x.UserId == userId) 
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+                
+            return Ok(history);
+        }
 
         [Authorize]
-        // 3. Produse din Catalog
         [HttpGet("products")]
         public async Task<IActionResult> GetProducts()
         {
@@ -90,11 +93,12 @@ public async Task<IActionResult> GetHistory()
         }
 
         [Authorize]
-        // 4. Evaluare inteligentă (folosește datele din baza de date)
         [HttpPost("evaluate-by-id/{id}")]
         public async Task<IActionResult> EvaluateById(int id)
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+            int userId = int.Parse(userIdClaim);
 
             var product = await _context.ProductCatalog.FindAsync(id);
             if (product == null) 
@@ -107,6 +111,11 @@ public async Task<IActionResult> GetHistory()
                     n_of_reviews = product.NOfReviews,
                     n_of_loves = product.NOfLoves,
                     price_per_ounce = product.PricePerOunce
+                },
+                UserProfile = new UserProfileData {
+                    skin_type = "combination", 
+                    main_concern = "acne",
+                    budget_level = "low"
                 }
             };
 
@@ -114,9 +123,8 @@ public async Task<IActionResult> GetHistory()
             if (result == null) 
                 return StatusCode(500, "Serviciul ML nu răspunde.");
 
-            string verdict = result.ml.merita_ml ? "Produs Recomandat" : "Nu este recomandat";
+            string verdict = result.VerdictFinal;
 
-            // SALVĂM ÎN ISTORIC folosind datele din 'product' găsit în DB
             var entry = new EvaluationEntry
             {
                 UserId = userId,
@@ -128,7 +136,7 @@ public async Task<IActionResult> GetHistory()
                 NOfLoves = product.NOfLoves,
                 Price = product.Price,
                 PricePerOunce = product.PricePerOunce,
-                MlProbability = result.ml.probability,
+                MlProbability = result.ProbabilitateML,
                 FinalVerdict = verdict,
                 CreatedAt = DateTime.Now
             };
