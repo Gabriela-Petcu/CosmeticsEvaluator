@@ -103,7 +103,8 @@ private string GenerateJwtToken(User user)
         Subject = new ClaimsIdentity(new[]
         {
             new Claim(ClaimTypes.Name, user.Email),
-            new Claim(ClaimTypes.Role, user.Role)
+            new Claim(ClaimTypes.Role, user.Role),
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // Adaugă asta lângă Email și Role
         }),
         Expires = DateTime.UtcNow.AddDays(7),
         Issuer = _config["Jwt:Issuer"],

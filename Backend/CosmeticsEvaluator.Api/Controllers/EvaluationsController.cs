@@ -18,40 +18,59 @@ namespace CosmeticsEvaluator.Api.Controllers
             _context = context;
         }
 
-        // GET: /Evaluations
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            // Am modificat _context.Evaluations în _context.EvaluationHistory
-            var evaluations = await _context.EvaluationHistory.ToListAsync();
-            return Ok(evaluations);
-        }
+        // Șterge liniile duplicate de [HttpGet] și parantezele rătăcite
+[HttpGet]
+public async Task<IActionResult> GetAll()
+{
+    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+
+    var userId = int.Parse(userIdClaim);
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+    if (role == "Admin")
+    {
+        return Ok(await _context.EvaluationHistory.ToListAsync());
+    }
+
+    var userEvaluations = await _context.EvaluationHistory
+        .Where(x => x.UserId == userId)
+        .ToListAsync();
+
+    return Ok(userEvaluations);
+}
 
         // POST: /Evaluations
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] EvaluationEntry evaluation)
-        {
-            evaluation.CreatedAt = DateTime.Now;
+public async Task<IActionResult> Create([FromBody] EvaluationEntry evaluation)
+{
+    var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+    
+    evaluation.UserId = userId; // Altfel crapă la SaveChanges fiindcă e Required
+    evaluation.CreatedAt = DateTime.Now;
 
-            // Am modificat aici
-            _context.EvaluationHistory.Add(evaluation);
-            await _context.SaveChangesAsync();
+    _context.EvaluationHistory.Add(evaluation);
+    await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Evaluare salvată cu succes!", data = evaluation });
-        }
-
+    return Ok(new { message = "Evaluare salvată cu succes!", data = evaluation });
+}
         // DELETE: /Evaluations/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            // Am modificat aici
-            var evaluation = await _context.EvaluationHistory.FindAsync(id);
-            if (evaluation == null) return NotFound("Evaluarea nu a fost găsită.");
+public async Task<IActionResult> Delete(int id)
+{
+    var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+    
+    var evaluation = await _context.EvaluationHistory.FindAsync(id);
+    
+    if (evaluation == null) return NotFound("Evaluarea nu a fost găsită.");
 
-            _context.EvaluationHistory.Remove(evaluation);
-            await _context.SaveChangesAsync();
+    // Verificăm dacă evaluarea aparține utilizatorului care vrea să o șteargă
+    if (evaluation.UserId != userId) return Forbid("Nu ai permisiunea să ștergi această evaluare.");
 
-            return Ok(new { message = "Evaluare ștearsă cu succes!" });
-        }
+    _context.EvaluationHistory.Remove(evaluation);
+    await _context.SaveChangesAsync();
+
+    return Ok(new { message = "Evaluare ștearsă cu succes!" });
+}
     }
 }

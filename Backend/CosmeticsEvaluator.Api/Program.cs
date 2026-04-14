@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi.Models;
-
+using CsvHelper;
+using System.Globalization;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. SERVICII
@@ -103,36 +104,19 @@ void SeedDatabase(AppDbContext context)
 
     var basePath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName;
     var path = Path.Combine(basePath, "Data", "Raw", "skincare_df.csv");
-    
-    if (!File.Exists(path)) {
-        path = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "Data", "Raw", "skincare_df.csv");
-    }
 
     if (!File.Exists(path)) return;
 
-    using var reader = new StreamReader(path);
-    reader.ReadLine(); 
-
-    while (!reader.EndOfStream)
+    using (var reader = new StreamReader(path))
+    using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
     {
-        var line = reader.ReadLine();
-        if (string.IsNullOrWhiteSpace(line)) continue;
+        csv.Context.RegisterClassMap<ProductCatalogMap>();
         
-        var values = line.Split(',');
-        try {
-            var product = new ProductCatalog
-            {
-                Brand = values[1].Trim(),
-                Name = values[2].Trim(),
-                Price = double.Parse(values[3]),
-                NOfReviews = (int)double.Parse(values[4]),
-                NOfLoves = (int)double.Parse(values[5]),
-                ReviewScore = double.Parse(values[6]),
-                PricePerOunce = values.Length > 45 ? double.Parse(values[45]) : 0
-            };
-            context.ProductCatalog.Add(product);
-        } catch { continue; }
+        // CsvHelper știe să ignore ghilimelele și să păstreze virgulele din interiorul numelor
+        var records = csv.GetRecords<ProductCatalog>().ToList();
+        
+        context.ProductCatalog.AddRange(records);
+        context.SaveChanges();
     }
-    context.SaveChanges();
-    Console.WriteLine("Import finalizat cu succes!");
+    Console.WriteLine("Import cu CsvHelper finalizat cu succes!");
 }

@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "6XBg+wyr2xY=",
+  "dgSpecHash": "mc5unopoO8Y=",
   "success": true,
   "projectFilePath": "D:\\Facultate\\Licenta\\aplicatie\\CosmeticsEvaluator\\Backend\\CosmeticsEvaluator.Api\\CosmeticsEvaluator.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\user\\.nuget\\packages\\bcrypt.net-next\\4.1.0\\bcrypt.net-next.4.1.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\csvhelper\\33.1.0\\csvhelper.33.1.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\google.apis\\1.73.0\\google.apis.1.73.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\google.apis.auth\\1.73.0\\google.apis.auth.1.73.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\google.apis.core\\1.73.0\\google.apis.core.1.73.0.nupkg.sha512",

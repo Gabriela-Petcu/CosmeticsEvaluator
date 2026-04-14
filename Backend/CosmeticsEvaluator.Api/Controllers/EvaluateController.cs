@@ -20,10 +20,13 @@ namespace CosmeticsEvaluator.Api.Controllers
             _context = context;
         }
 
+        [Authorize]
         // 1. Evaluare manuală (folosește datele trimise de utilizator în JSON)
         [HttpPost]
         public async Task<IActionResult> EvaluateProduct([FromBody] ProductEvaluationRequest request)
         {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+
             var result = await _mlService.GetPredictionAsync(request);
             
             if (result == null) 
@@ -34,6 +37,7 @@ namespace CosmeticsEvaluator.Api.Controllers
             // SALVĂM ÎN ISTORIC folosind datele din 'request'
             var entry = new EvaluationEntry
             {
+                UserId = userId,
                 ProductId = request.ProductId,
                 Name = request.ProductId, // În modul manual, punem ID-ul ca nume
                 Brand = "Manual Entry",    // Nu avem brand în request-ul manual
@@ -58,15 +62,23 @@ namespace CosmeticsEvaluator.Api.Controllers
 
         // 2. Istoric
         [Authorize]
-        [HttpGet("history")]
-        public async Task<IActionResult> GetHistory()
-        {
-            var history = await _context.EvaluationHistory
-                .OrderByDescending(x => x.CreatedAt)
-                .ToListAsync();
-            return Ok(history);
-        }
+[HttpGet("history")]
+public async Task<IActionResult> GetHistory()
+{
+    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+    
+    var userId = int.Parse(userIdClaim);
 
+    var history = await _context.EvaluationHistory
+        .Where(x => x.UserId == userId) // <--- ADAUGĂ ASTA
+        .OrderByDescending(x => x.CreatedAt)
+        .ToListAsync();
+        
+    return Ok(history);
+}
+
+        [Authorize]
         // 3. Produse din Catalog
         [HttpGet("products")]
         public async Task<IActionResult> GetProducts()
@@ -77,10 +89,13 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(products);
         }
 
+        [Authorize]
         // 4. Evaluare inteligentă (folosește datele din baza de date)
         [HttpPost("evaluate-by-id/{id}")]
         public async Task<IActionResult> EvaluateById(int id)
         {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+
             var product = await _context.ProductCatalog.FindAsync(id);
             if (product == null) 
                 return NotFound("Produsul nu a fost găsit în catalog.");
@@ -104,6 +119,7 @@ namespace CosmeticsEvaluator.Api.Controllers
             // SALVĂM ÎN ISTORIC folosind datele din 'product' găsit în DB
             var entry = new EvaluationEntry
             {
+                UserId = userId,
                 ProductId = product.Name,
                 Name = product.Name,
                 Brand = product.Brand,
