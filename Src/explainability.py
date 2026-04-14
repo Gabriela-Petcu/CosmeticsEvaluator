@@ -20,6 +20,7 @@ RAW_REQUIRED_COLUMNS = [
     "price_per_ounce",
 ]
 
+_SHAP_BACKGROUND_CACHE = None
 
 @dataclass
 class FactorExplanation:
@@ -47,6 +48,16 @@ class ProductExplanation:
     ProbabilitateML: float
     TopFactoriML: list[FactorExplanation]
 
+def _get_background_data(preprocessor):
+    global _SHAP_BACKGROUND_CACHE
+    if _SHAP_BACKGROUND_CACHE is None:
+        # Încărcăm datele o singură dată
+        bg_df = load_skincare_dv()
+        bg_df = add_engineered_features(bg_df)
+        # Folosim un sample fix (random_state) pentru consistență
+        sample = bg_df[MODEL_FEATURES].sample(n=100, random_state=42)
+        _SHAP_BACKGROUND_CACHE = preprocessor.transform(sample)
+    return _SHAP_BACKGROUND_CACHE
 
 def _ensure_dataframe(product: dict[str, Any] | pd.Series | pd.DataFrame) -> pd.DataFrame:
     if isinstance(product, dict):
@@ -178,6 +189,12 @@ def explain_product(
 
     product_df = _ensure_dataframe(product)
 
+    bundle = load_bundle()
+    preprocessor = bundle["full_system"].named_steps["preprocessor"]
+    # Folosim cache-ul în loc să regenerăm background-ul
+    background_transformed = _get_background_data(preprocessor)
+    explainer = shap.LinearExplainer(bundle["full_system"].named_steps["classifier"], background_transformed)
+
     _validate_required_columns(product_df, RAW_REQUIRED_COLUMNS)
     _validate_numeric_columns(product_df, RAW_REQUIRED_COLUMNS)
 
@@ -211,8 +228,8 @@ def explain_product(
     X_transformed = preprocessor.transform(X_ml)
 
     transformed_feature_names = list(preprocessor.get_feature_names_out())
-    background_transformed = _build_background_transformed(preprocessor)
-
+    
+    background_transformed = _get_background_data(preprocessor)
     explainer = shap.LinearExplainer(classifier, background_transformed)
 
     shap_values = explainer.shap_values(X_transformed)

@@ -436,6 +436,13 @@ def _apply_budget_rules(
     price = product.get("price", None)
     price_per_ounce = product.get("price_per_ounce", None)
 
+    # Adaugă o verificare la începutul funcției
+    if pd.isna(price) or price <= 0:
+        # Dacă nu avem preț, penalizăm ușor pentru incertitudine sau ignorăm
+        score -= 5 
+        reasons_neg.append("Preț indisponibil pentru verificare buget.")
+        return score
+
     if pd.isna(price):
         return score
 

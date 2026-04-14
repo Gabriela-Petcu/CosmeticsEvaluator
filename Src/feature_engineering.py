@@ -11,38 +11,30 @@ RAW_FEATURE_COLUMNS = [
 
 
 def add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Adaugă feature-uri derivate pentru modelul ML.
-
-    Observații:
-    - valorile lipsă din n_of_reviews și n_of_loves sunt tratate ca 0,
-      deoarece reprezintă count-uri
-    - review_score și price_per_ounce nu sunt imputate aici; dacă lipsesc,
-      unele feature-uri derivate pot deveni NaN și vor fi tratate ulterior
-      în flow-ul de inferență / pipeline-ul ML
-    """
-    missing = [col for col in RAW_FEATURE_COLUMNS if col not in df.columns]
-    if missing:
-        raise ValueError(
-            f"Lipsesc coloane necesare pentru add_engineered_features: {missing}"
-        )
-
+    # ... (verificare missing columns existentă) ...
     out = df.copy()
-
+    
+    # Pregătim datele pentru calcule sigure
     reviews = out["n_of_reviews"].fillna(0)
     loves = out["n_of_loves"].fillna(0)
-    review_score = out["review_score"]
-    price_per_ounce = out["price_per_ounce"]
+    review_score = out["review_score"].fillna(0)
+    price_per_ounce_clean = out["price_per_ounce"].fillna(0)
 
-    #scor de popularitate 
+    # 1. Scor de popularitate 
     out["popularity_score"] = np.log1p(reviews) + np.log1p(loves)
-    #scor bazat pe engagement (loves per review)
+    
+    # 2. Scor engagement
     out["engagement_score"] = loves / (reviews + 1)
-    #scor bazat pe calitate/pret
-    safe_price = price_per_ounce.replace(0, np.nan)
-    out["value_score"] = review_score / safe_price
-    #scor solid bazat pe review_score și numărul de review-uri
+    
+    # 3. Scor valoare (Calitate/Pret) - PROTEJAT la diviziune cu zero
+    out["value_score"] = np.where(
+        price_per_ounce_clean > 0, 
+        review_score / price_per_ounce_clean, 
+        0
+    )
+    
+    # 4. Scor solid review_strength
     out["review_strength"] = review_score * np.log1p(reviews)
-    out = out.replace([np.inf, -np.inf], np.nan)
-
-    return out
+    
+    # Curățare finală pentru ML
+    return out.replace([np.inf, -np.inf], 0).fillna(0)

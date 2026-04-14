@@ -56,7 +56,11 @@ def load_skincare_dv(path: str | Path = RAW_SKINCARE_DV) -> pd.DataFrame:
     eventualele probleme de encoding de pe coloanele text relevante.
     """
     path = Path(path)
+    requested_path = Path(path).resolve()
+    base_data_path = Path(RAW_SKINCARE_DV).parent.resolve()
 
+    if not requested_path.is_relative_to(base_data_path.parent):
+        raise PermissionError("Acces neautorizat la sistemul de fișiere.")
     if not path.exists():
         raise FileNotFoundError(f"Nu există fișierul dataset la calea: {path}")
 

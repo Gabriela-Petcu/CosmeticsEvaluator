@@ -1,70 +1,54 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pandas as pd
-import joblib
-
-# Importăm funcțiile tale din inference.py
-from Src.inference import load_bundle, prepare_baseline_dataframe, prepare_ml_dataframe, add_ml_predictions
+from Src.pipeline import evaluate_product_for_user, UserProfile
 
 app = FastAPI(title="CosmeticsEvaluator ML Engine")
 
-# --- MODELE DE DATE (Ce primim de la ASP.NET) ---
+# Modelele de date pentru request
 class ProductData(BaseModel):
     review_score: float
     n_of_reviews: int
     n_of_loves: int
     price_per_ounce: float
+    # Adăugate pentru a suporta User Matching din .NET
+    brand: str = "Unknown"
+    name: str = "Unknown"
+    price: float = 0.0
+    # Categorii (opțional, dacă le trimiți din .NET)
+    # category_Moisturizers: int = 0 etc.
+
+class UserProfileData(BaseModel):
+    skin_type: str
+    main_concern: str
+    budget_level: str
 
 class EvaluationRequest(BaseModel):
     product_id: str
     data: ProductData
+    user_profile: UserProfileData | None = None # Profil opțional
 
-# --- LOGICA DE ÎNCĂRCARE ---
-# Încărcăm bundle-ul o singură dată la pornire, pentru performanță
-try:
-    BUNDLE = load_bundle()
-    print("✅ Model bundle loaded successfully.")
-except Exception as e:
-    print(f"❌ Error loading bundle: {e}")
-    BUNDLE = None
-
-# --- ENDPOINT-UL PRINCIPAL ---
 @app.post("/evaluate")
 async def evaluate_product(request: EvaluationRequest):
-    if BUNDLE is None:
-        raise HTTPException(status_code=500, detail="ML Model not loaded.")
-
     try:
-        # 1. Convertim datele primite în DataFrame (formatul așteptat de funcțiile tale)
-        input_dict = request.data.dict()
-        df = pd.DataFrame([input_dict])
-
-        # 2. Rulăm flow-ul tău existent
-        # Calculăm Baseline (ScorFinal, Merita)
-        df_baseline = prepare_baseline_dataframe(df, BUNDLE)
+        # 1. Setăm profilul (din request sau default)
+        if request.user_profile:
+            profile = UserProfile(
+                skin_type=request.user_profile.skin_type,
+                main_concern=request.user_profile.main_concern,
+                budget_level=request.user_profile.budget_level
+            )
+        else:
+            profile = UserProfile(skin_type="normal", main_concern="anti_aging", budget_level="medium")
         
-        # Calculăm ML Features
-        df_ml_prep = prepare_ml_dataframe(df_baseline)
+        # 2. Rulăm pipeline-ul complet
+        response = evaluate_product_for_user(request.data.dict(), profile)
         
-        # Obținem Predicțiile ML
-        df_final = add_ml_predictions(df_ml_prep, BUNDLE)
-
-        # 3. Extragem rezultatele pentru a le trimite înapoi
-        result = {
-            "product_id": request.product_id,
-            "baseline": {
-                "score": float(df_final["ScorFinal"].iloc[0]),
-                "merita": bool(df_final["Merita"].iloc[0])
-            },
-            "ml": {
-                "merita_ml": bool(df_final["MeritaML"].iloc[0]),
-                "probability": float(df_final["ProbabilitateML"].iloc[0])
-            }
-        }
+        if response.status != "ok":
+            raise HTTPException(status_code=400, detail=response.message)
+            
+        return response.result 
         
-        return result
-
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# Pornire: uvicorn api:app --reload
+        print(f"Internal Error: {e}")
+        raise HTTPException(status_code=500, detail="Eroare internă de procesare AI.")
