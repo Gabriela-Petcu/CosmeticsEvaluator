@@ -21,64 +21,85 @@ namespace CosmeticsEvaluator.Api.Controllers
             _context = context;
         }
 
+        // Metodă helper — extrage userId sau returnează null
+        private int? GetUserId()
+        {
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(claim)) return null;
+            return int.Parse(claim);
+        }
+
+        // Metodă helper — construiește profilul din datele utilizatorului curent
+        private async Task<UserProfileData> GetUserProfileAsync(int userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return new UserProfileData(); // fallback la valorile default
+
+            return new UserProfileData
+{
+                SkinType = user.SkinType,
+                MainConcern = user.MainConcern,
+                BudgetLevel = user.BudgetLevel
+            };
+        }
+
         [Authorize]
         [HttpPost]
         public async Task<IActionResult> EvaluateProduct([FromBody] ProductEvaluationRequest request)
         {
-            // 1. Extrage ID-ul userului
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
-            int userId = int.Parse(userIdClaim);
+            var userId = GetUserId();
+            if (userId == null) return Unauthorized();
 
-            // 2. Apelează serviciul ML
-            var result = await _mlService.GetPredictionAsync(request);
-            
-            if (result == null) 
-                return StatusCode(500, "Nu s-a putut contacta serviciul ML Python.");
+            // Înlocuiește profilul din request cu profilul real al utilizatorului
+            request.UserProfile = await GetUserProfileAsync(userId.Value);
 
-            // 3. Folosește verdictul venit direct din noul Pipeline Python
-            string verdict = result.VerdictFinal;
-
-            // 4. Salvează în istoric
-            var entry = new EvaluationEntry
+            try
             {
-                UserId = userId,
-                ProductId = request.ProductId,
-                Name = request.ProductId, 
-                Brand = "Manual Entry",    
-                ReviewScore = request.Data.review_score,
-                NOfReviews = request.Data.n_of_reviews,
-                NOfLoves = request.Data.n_of_loves,
-                PricePerOunce = request.Data.price_per_ounce,
-                MlProbability = result.ProbabilitateML,
-                FinalVerdict = verdict,
-                CreatedAt = DateTime.Now
-            };
+                var result = await _mlService.GetPredictionAsync(request);
 
-            _context.EvaluationHistory.Add(entry);
-            await _context.SaveChangesAsync();
+                var entry = new EvaluationEntry
+                {
+                    UserId = userId.Value,
+                    ProductId = request.ProductId,
+                    Name = request.ProductId,
+                    Brand = "Manual Entry",
+                    ReviewScore = request.Data.review_score,
+                    NOfReviews = request.Data.n_of_reviews,
+                    NOfLoves = request.Data.n_of_loves,
+                    PricePerOunce = request.Data.price_per_ounce,
+                    MlProbability = result.ProbabilitateML,
+                    FinalVerdict = result.VerdictFinal,
+                    CreatedAt = DateTime.Now
+                };
 
-            return Ok(new { 
-                OriginalResult = result, 
-                FinalVerdict = verdict,
-                SavedAt = entry.CreatedAt 
-            });
+                _context.EvaluationHistory.Add(entry);
+                await _context.SaveChangesAsync();
+
+                return Ok(new {
+                    OriginalResult = result,
+                    FinalVerdict = result.VerdictFinal,
+                    SavedAt = entry.CreatedAt
+                });
+            }
+            catch (HttpRequestException ex)
+            {
+                return StatusCode(502, $"Serviciul ML a returnat eroare: {ex.Message}");
+            }
         }
 
         [Authorize]
         [HttpGet("history")]
         public async Task<IActionResult> GetHistory()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
-            
-            var userId = int.Parse(userIdClaim);
+            var userId = GetUserId();
+            if (userId == null) return Unauthorized();
 
             var history = await _context.EvaluationHistory
-                .Where(x => x.UserId == userId) 
+                .Where(x => x.UserId == userId.Value)
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
-                
+
             return Ok(history);
         }
 
@@ -96,59 +117,78 @@ namespace CosmeticsEvaluator.Api.Controllers
         [HttpPost("evaluate-by-id/{id}")]
         public async Task<IActionResult> EvaluateById(int id)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
-            int userId = int.Parse(userIdClaim);
+            var userId = GetUserId();
+            if (userId == null) return Unauthorized();
 
             var product = await _context.ProductCatalog.FindAsync(id);
-            if (product == null) 
+            if (product == null)
                 return NotFound("Produsul nu a fost găsit în catalog.");
 
-            var mlRequest = new ProductEvaluationRequest {
-                ProductId = product.Name,
-                Data = new ProductData {
-                    review_score = product.ReviewScore,
-                    n_of_reviews = product.NOfReviews,
-                    n_of_loves = product.NOfLoves,
-                    price_per_ounce = product.PricePerOunce
-                },
-                UserProfile = new UserProfileData {
-                    skin_type = "combination", 
-                    main_concern = "acne",
-                    budget_level = "low"
-                }
-            };
+            // Profilul real al utilizatorului în loc de valorile hardcodate
+            var userProfile = await GetUserProfileAsync(userId.Value);
 
-            var result = await _mlService.GetPredictionAsync(mlRequest);
-            if (result == null) 
-                return StatusCode(500, "Serviciul ML nu răspunde.");
-
-            string verdict = result.VerdictFinal;
-
-            var entry = new EvaluationEntry
+            var mlRequest = new ProductEvaluationRequest
             {
-                UserId = userId,
                 ProductId = product.Name,
-                Name = product.Name,
-                Brand = product.Brand,
-                ReviewScore = product.ReviewScore,
-                NOfReviews = product.NOfReviews,
-                NOfLoves = product.NOfLoves,
-                Price = product.Price,
-                PricePerOunce = product.PricePerOunce,
-                MlProbability = result.ProbabilitateML,
-                FinalVerdict = verdict,
-                CreatedAt = DateTime.Now
+                Data = new ProductData
+{
+    review_score = product.ReviewScore,
+    n_of_reviews = product.NOfReviews,
+    n_of_loves = product.NOfLoves,
+    price_per_ounce = product.PricePerOunce ?? 0,
+    category_Anti_Aging = product.CategoryAntiAging,
+    category_Acne_Treatments = product.CategoryAcneTreatments,
+    category_Exfoliators = product.CategoryExfoliators,
+    category_Eye_Treatments = product.CategoryEyeTreatments,
+    category_Face_Masks = product.CategoryFaceMasks,
+    category_Face_Oils = product.CategoryFaceOils,
+    category_Face_Serums = product.CategoryFaceSerums,
+    category_Face_Sunscreen = product.CategoryFaceSunscreen,
+    category_Face_Wash = product.CategoryFaceWash,
+    category_Facial_Peels = product.CategoryFacialPeels,
+    category_Mists_Essences = product.CategoryMistsEssences,
+    category_Moisturizer_Treatments = product.CategoryMoisturizerTreatments,
+    category_Moisturizers = product.CategoryMoisturizers,
+    category_Night_Creams = product.CategoryNightCreams,
+    category_Toners = product.CategoryToners,
+    category_Blotting_Papers = product.CategoryBlottingPapers
+},
+                UserProfile = userProfile
             };
 
-            _context.EvaluationHistory.Add(entry);
-            await _context.SaveChangesAsync();
+            try
+            {
+                var result = await _mlService.GetPredictionAsync(mlRequest);
 
-            return Ok(new { 
-                OriginalResult = result, 
-                FinalVerdict = verdict,
-                ProductInfo = new { product.Brand, product.Name, product.Price }
-            });
+                var entry = new EvaluationEntry
+                {
+                    UserId = userId.Value,
+                    ProductId = product.Name,
+                    Name = product.Name,
+                    Brand = product.Brand,
+                    ReviewScore = product.ReviewScore,
+                    NOfReviews = product.NOfReviews,
+                    NOfLoves = product.NOfLoves,
+                    Price = product.Price,
+                    PricePerOunce = product.PricePerOunce ?? 0,
+                    MlProbability = result.ProbabilitateML,
+                    FinalVerdict = result.VerdictFinal,
+                    CreatedAt = DateTime.Now
+                };
+
+                _context.EvaluationHistory.Add(entry);
+                await _context.SaveChangesAsync();
+
+                return Ok(new {
+                    OriginalResult = result,
+                    FinalVerdict = result.VerdictFinal,
+                    ProductInfo = new { product.Brand, product.Name, product.Price }
+                });
+            }
+            catch (HttpRequestException ex)
+            {
+                return StatusCode(502, $"Serviciul ML a returnat eroare: {ex.Message}");
+            }
         }
     }
 }

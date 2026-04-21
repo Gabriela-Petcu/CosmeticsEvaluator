@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CosmeticsEvaluator.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260408111740_FixPendingChanges")]
-    partial class FixPendingChanges
+    [Migration("20260421182319_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -63,7 +63,12 @@ namespace CosmeticsEvaluator.Api.Migrations
                     b.Property<double>("ReviewScore")
                         .HasColumnType("REAL");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("EvaluationHistory");
                 });
@@ -78,6 +83,54 @@ namespace CosmeticsEvaluator.Api.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("CategoryAcneTreatments")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryAntiAging")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryBlottingPapers")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryExfoliators")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryEyeTreatments")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryFaceMasks")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryFaceOils")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryFaceSerums")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryFaceSunscreen")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryFaceWash")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryFacialPeels")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryMistsEssences")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryMoisturizerTreatments")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryMoisturizers")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryNightCreams")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryToners")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("NOfLoves")
                         .HasColumnType("INTEGER");
 
@@ -91,7 +144,7 @@ namespace CosmeticsEvaluator.Api.Migrations
                     b.Property<double>("Price")
                         .HasColumnType("REAL");
 
-                    b.Property<double>("PricePerOunce")
+                    b.Property<double?>("PricePerOunce")
                         .HasColumnType("REAL");
 
                     b.Property<double>("ReviewScore")
@@ -108,10 +161,18 @@ namespace CosmeticsEvaluator.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("BudgetLevel")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MainConcern")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -123,9 +184,29 @@ namespace CosmeticsEvaluator.Api.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("SkinType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("CosmeticsEvaluator.Api.Models.EvaluationEntry", b =>
+                {
+                    b.HasOne("CosmeticsEvaluator.Api.Models.User", "User")
+                        .WithMany("Evaluations")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CosmeticsEvaluator.Api.Models.User", b =>
+                {
+                    b.Navigation("Evaluations");
                 });
 #pragma warning restore 612, 618
         }

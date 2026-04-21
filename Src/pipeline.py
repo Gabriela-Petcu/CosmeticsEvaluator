@@ -67,6 +67,10 @@ def evaluate_product_for_user(
     o evaluare incompletă. În schimb, returnează un răspuns structurat,
     potrivit pentru backend/frontend.
     """
+    if not isinstance(user_profile, UserProfile):
+        raise TypeError(
+            f"user_profile trebuie să fie instanță UserProfile, nu {type(user_profile).__name__}"
+        )
     product_df = _normalize_product_input(product)
 
     baseline_report = inspect_baseline_input(product_df)

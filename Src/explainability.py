@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import shap
+import threading
 
 from Src.config import MODEL_FEATURES
 from Src.inference import load_bundle
@@ -21,6 +22,7 @@ RAW_REQUIRED_COLUMNS = [
 ]
 
 _SHAP_BACKGROUND_CACHE = None
+_SHAP_CACHE_LOCK = threading.Lock()
 
 @dataclass
 class FactorExplanation:
@@ -50,13 +52,20 @@ class ProductExplanation:
 
 def _get_background_data(preprocessor):
     global _SHAP_BACKGROUND_CACHE
-    if _SHAP_BACKGROUND_CACHE is None:
-        # Încărcăm datele o singură dată
-        bg_df = load_skincare_dv()
-        bg_df = add_engineered_features(bg_df)
-        # Folosim un sample fix (random_state) pentru consistență
-        sample = bg_df[MODEL_FEATURES].sample(n=100, random_state=42)
-        _SHAP_BACKGROUND_CACHE = preprocessor.transform(sample)
+
+    # Fast path — fără lock dacă cache-ul e deja populat
+    if _SHAP_BACKGROUND_CACHE is not None:
+        return _SHAP_BACKGROUND_CACHE
+
+    with _SHAP_CACHE_LOCK:
+        # Double-check după achiziționarea lock-ului
+        # (alt thread putea popula cache-ul între cele două verificări)
+        if _SHAP_BACKGROUND_CACHE is None:
+            bg_df = load_skincare_dv()
+            bg_df = add_engineered_features(bg_df)
+            sample = bg_df[MODEL_FEATURES].sample(n=100, random_state=42)
+            _SHAP_BACKGROUND_CACHE = preprocessor.transform(sample)
+
     return _SHAP_BACKGROUND_CACHE
 
 def _ensure_dataframe(product: dict[str, Any] | pd.Series | pd.DataFrame) -> pd.DataFrame:
@@ -139,61 +148,14 @@ def _extract_top_factors(
     return factors[:top_k]
 
 
-def _build_background_transformed(
-    preprocessor,
-    sample_size: int = 100,
-    random_state: int = 42
-):
-    """
-    Construiește un background dataset pentru SHAP pornind din datele
-    proiectului și aplicând aceleași transformări ca în pipeline-ul ML.
-
-    Acest background este extras din datasetul disponibil al proiectului și
-    este folosit ca referință pentru explicarea locală a predicției modelului.
-    """
-    background_df = load_skincare_dv()
-    background_df = add_engineered_features(background_df)
-
-    missing = [col for col in MODEL_FEATURES if col not in background_df.columns]
-    if missing:
-        raise ValueError(f"Lipsesc coloane necesare pentru background SHAP: {missing}")
-
-    if len(background_df) > sample_size:
-        background_df = background_df.sample(n=sample_size, random_state=random_state)
-
-    background_X = background_df[MODEL_FEATURES].copy()
-    background_transformed = preprocessor.transform(background_X)
-
-    return background_transformed
-
-
 def explain_product(
     product: dict[str, Any] | pd.Series | pd.DataFrame,
     top_k: int = 3
 ) -> ProductExplanation:
-    """
-    Explicație pentru un singur produs.
-
-    Include:
-    - scorul baseline și eticheta deterministă
-    - predicția și probabilitatea modelului ML
-    - principalii factori SHAP care explică exclusiv predicția modelului ML
-
-    Important:
-    - factorii SHAP NU explică verdictul final de recomandare
-    - factorii SHAP NU explică modulul de user matching
-    - factorii SHAP NU explică scorul baseline
-    """
     if top_k <= 0:
         raise ValueError("top_k trebuie să fie un număr pozitiv.")
 
     product_df = _ensure_dataframe(product)
-
-    bundle = load_bundle()
-    preprocessor = bundle["full_system"].named_steps["preprocessor"]
-    # Folosim cache-ul în loc să regenerăm background-ul
-    background_transformed = _get_background_data(preprocessor)
-    explainer = shap.LinearExplainer(bundle["full_system"].named_steps["classifier"], background_transformed)
 
     _validate_required_columns(product_df, RAW_REQUIRED_COLUMNS)
     _validate_numeric_columns(product_df, RAW_REQUIRED_COLUMNS)
@@ -206,11 +168,16 @@ def explain_product(
 
     ml_product_df = engineered_product_df[MODEL_FEATURES].copy()
 
+    # Bundle încărcat o singură dată, înainte de orice utilizare
     bundle = load_bundle()
     full_system = bundle["full_system"]
     threshold = float(bundle["threshold"])
     score_scaler = bundle["score_scaler"]
 
+    preprocessor = full_system.named_steps["preprocessor"]
+    classifier = full_system.named_steps["classifier"]
+
+    # Baseline scoring
     baseline_df = add_log_features(raw_product_df.copy())
     baseline_df = compute_score_with_scaler(baseline_df, score_scaler)
     baseline_df = label_with_threshold(baseline_df, threshold)
@@ -218,27 +185,20 @@ def explain_product(
     scor_final = float(baseline_df.iloc[0]["ScorFinal"])
     merita = int(baseline_df.iloc[0]["Merita"])
 
-    preprocessor = full_system.named_steps["preprocessor"]
-    classifier = full_system.named_steps["classifier"]
-
+    # ML prediction
     X_ml = ml_product_df.copy()
     merita_ml = int(full_system.predict(X_ml)[0])
     probabilitate_ml = float(full_system.predict_proba(X_ml)[0, 1])
 
+    # SHAP
     X_transformed = preprocessor.transform(X_ml)
-
     transformed_feature_names = list(preprocessor.get_feature_names_out())
-    
+
     background_transformed = _get_background_data(preprocessor)
     explainer = shap.LinearExplainer(classifier, background_transformed)
 
-    shap_values = explainer.shap_values(X_transformed)
-    shap_values = np.asarray(shap_values)
-
-    if shap_values.ndim == 1:
-        shap_row = shap_values
-    else:
-        shap_row = shap_values[0]
+    shap_values = np.asarray(explainer.shap_values(X_transformed))
+    shap_row = shap_values if shap_values.ndim == 1 else shap_values[0]
 
     top_factori_ml = _extract_top_factors(
         shap_row=shap_row,

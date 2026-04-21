@@ -28,6 +28,24 @@ Thumbs.db
 # Jupyter
 .ipynb_checkpoints/
 
+# Baza de date
+*.db
+*.db-shm
+*.db-wal
+
+# Build artifacts .NET
+**/bin/
+**/obj/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.joblib
+
+# Secretele
+appsettings.Development.json
+
 # Testing & coverage
 .pytest_cache/
 .coverage
@@ -40,3 +58,6 @@ lightning_logs/
 ray_results/
 
 Data/Raw/
+Backend/CosmeticsEvaluator.Api/appsettings.Development.json
+Backend/CosmeticsEvaluator.Api/cosmetics.db
+Backend/CosmeticsEvaluator.Api/appsettings.Development.json

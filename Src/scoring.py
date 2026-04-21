@@ -40,6 +40,7 @@ class ScoreScaler:
     def __init__(self):
         self.mins_ = {}
         self.maxs_ = {}
+        self._is_fitted = False
 
     #min/max pt fiecare coloana din SC
     def fit(self, df: pd.DataFrame, cols: list[str]):
@@ -58,15 +59,25 @@ class ScoreScaler:
             self.mins_[c] = float(series.min())
             self.maxs_[c] = float(series.max())
 
+        self._is_fitted = True
         return self
 
-    #aplica normalizarea min-max învățată pe TRAIN
+    def _check_is_fitted(self) -> None:
+        if not self._is_fitted:
+            raise RuntimeError(
+                "ScoreScaler nu a fost antrenat. Apelează fit() înainte de transform_series()."
+            )
+        
+    # Aplică normalizarea min-max învățată pe TRAIN.
+    # Verifică mai întâi că fit() a fost apelat și că coloana e cunoscută.
     def transform_series(self, s: pd.Series, col: str) -> pd.Series:
+        self._check_is_fitted()
+
         if col not in self.mins_ or col not in self.maxs_:
             raise ValueError(
-                f"ScoreScaler nu este pregătit pentru coloana '{col}'. "
-                f"Asigură-te că fit() a fost apelat corect."
-            )
+                f"Coloana '{col}' nu a fost văzută în fit(). "
+                f"Coloane disponibile: {list(self.mins_.keys())}"
+)
 
         mn = self.mins_[col]
         mx = self.maxs_[col]
@@ -87,6 +98,8 @@ def compute_score_with_scaler(df: pd.DataFrame, scaler: ScoreScaler) -> pd.DataF
     - log_loves
     - price_per_ounce
     """
+    if not isinstance(scaler, ScoreScaler):
+        raise TypeError(f"scaler trebuie să fie instanță ScoreScaler, nu {type(scaler).__name__}")
     required = ["review_score", "log_reviews", "log_loves", "price_per_ounce"]
     missing = [c for c in required if c not in df.columns]
     if missing:

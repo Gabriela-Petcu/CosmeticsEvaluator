@@ -9,14 +9,36 @@ from Src.preprocessing import build_preprocessing_pipeline
 from Src.scoring import add_log_features, ScoreScaler, compute_score_with_scaler, label_with_threshold
 from Src.feature_engineering import add_engineered_features
 
+
 def main():
     df = load_skincare_dv()
-    
-    train_df, test_df = train_test_split(
-        df,
+
+    # Calculăm eticheta temporară DOAR pentru stratificare
+    strat_df = add_engineered_features(df.copy())
+    strat_df = add_log_features(strat_df)
+
+    # strat_scaler este calculat pe întregul dataset în mod intenționat.
+    # Este folosit exclusiv pentru generarea etichetei de stratificare (y_strat)
+    # și nu intră în antrenarea sau evaluarea modelului.
+    strat_scaler = ScoreScaler().fit(strat_df, cols=SCORE_COLUMNS)
+    strat_df = compute_score_with_scaler(strat_df, strat_scaler)
+    strat_df = strat_df.dropna(subset=["ScorFinal"]).copy()
+    strat_threshold = float(strat_df["ScorFinal"].quantile(0.75))
+    strat_df = label_with_threshold(strat_df, strat_threshold)
+
+    valid_idx = strat_df.index
+    df_valid = df.loc[valid_idx]
+    y_strat = strat_df["Merita"]
+
+    train_idx, test_idx = train_test_split(
+        df_valid.index,
         test_size=0.2,
-        random_state=42
+        random_state=42,
+        stratify=y_strat
     )
+
+    train_df = df.loc[train_idx].copy()
+    test_df = df.loc[test_idx].copy()
 
     train_df = add_engineered_features(train_df)
     test_df = add_engineered_features(test_df)
@@ -32,7 +54,6 @@ def main():
     train_scored = train_scored.dropna(subset=["ScorFinal"]).copy()
     test_scored = test_scored.dropna(subset=["ScorFinal"]).copy()
 
-    #construieste eticheta merita
     threshold = float(train_scored["ScorFinal"].quantile(0.75))
     train_labeled = label_with_threshold(train_scored, threshold)
     test_labeled = label_with_threshold(test_scored, threshold)
@@ -47,7 +68,6 @@ def main():
     ])
 
     full_system.fit(train_labeled[MODEL_FEATURES], train_labeled["Merita"])
-
     pred = full_system.predict(test_labeled[MODEL_FEATURES])
 
     print("\nClassification report:\n", classification_report(test_labeled["Merita"], pred))
@@ -63,8 +83,8 @@ def main():
 
     out_path = MODELS_DIR / "bundle_logreg_v1.joblib"
     joblib.dump(bundle, out_path)
-
     print(f"Model salvat în: {out_path}")
+
 
 if __name__ == "__main__":
     main()

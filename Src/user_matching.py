@@ -294,15 +294,11 @@ def _name_contains(product_name: str, keywords: list[str]) -> bool:
     name = (product_name or "").lower()
     return any(keyword in name for keyword in keywords)
 
-
 def _validate_category_columns(product: pd.Series) -> None:
     available = [col for col in CATEGORY_COLUMNS.values() if col in product.index]
     if not available:
-        raise ValueError(
-            "Produsul nu conține coloane de categorie. Modulul de user matching "
-            "are nevoie de aceste informații pentru a aplica regulile euristice."
-        )
-
+        # Nu mai aruncăm eroare — regulile de categorie vor returna 0 implicit
+        return
 
 def _append_reason(
     positive: bool,
@@ -443,8 +439,6 @@ def _apply_budget_rules(
         reasons_neg.append("Preț indisponibil pentru verificare buget.")
         return score
 
-    if pd.isna(price):
-        return score
 
     if profile.budget_level == "low":
         if price <= 20:

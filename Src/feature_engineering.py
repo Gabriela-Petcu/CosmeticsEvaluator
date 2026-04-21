@@ -11,30 +11,37 @@ RAW_FEATURE_COLUMNS = [
 
 
 def add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
-    # ... (verificare missing columns existentă) ...
+    missing = [col for col in RAW_FEATURE_COLUMNS if col not in df.columns]
+    if missing:
+        raise ValueError(
+            f"Lipsesc coloane necesare pentru add_engineered_features: {missing}"
+        )
+
+    non_numeric = [
+        col for col in RAW_FEATURE_COLUMNS
+        if not pd.api.types.is_numeric_dtype(df[col])
+    ]
+    if non_numeric:
+        raise ValueError(
+            f"Coloanele următoare trebuie să fie numerice (dtype numeric), "
+            f"dar au fost găsite ca tip non-numeric: {non_numeric}. "
+            f"Verifică dacă CSV-ul a fost citit corect."
+        )
+
     out = df.copy()
-    
-    # Pregătim datele pentru calcule sigure
+
     reviews = out["n_of_reviews"].fillna(0)
     loves = out["n_of_loves"].fillna(0)
     review_score = out["review_score"].fillna(0)
     price_per_ounce_clean = out["price_per_ounce"].fillna(0)
 
-    # 1. Scor de popularitate 
     out["popularity_score"] = np.log1p(reviews) + np.log1p(loves)
-    
-    # 2. Scor engagement
     out["engagement_score"] = loves / (reviews + 1)
-    
-    # 3. Scor valoare (Calitate/Pret) - PROTEJAT la diviziune cu zero
     out["value_score"] = np.where(
-        price_per_ounce_clean > 0, 
-        review_score / price_per_ounce_clean, 
+        price_per_ounce_clean > 0,
+        review_score / price_per_ounce_clean,
         0
     )
-    
-    # 4. Scor solid review_strength
     out["review_strength"] = review_score * np.log1p(reviews)
-    
-    # Curățare finală pentru ML
+
     return out.replace([np.inf, -np.inf], 0).fillna(0)

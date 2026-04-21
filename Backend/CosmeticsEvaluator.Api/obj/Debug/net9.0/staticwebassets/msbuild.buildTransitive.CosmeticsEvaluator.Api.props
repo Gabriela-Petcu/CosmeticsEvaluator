@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\buildMultiTargeting\CosmeticsEvaluator.Api.props" />
-</Project>

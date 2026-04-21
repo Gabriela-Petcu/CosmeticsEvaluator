@@ -7,6 +7,7 @@ using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Google.Apis.Auth;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CosmeticsEvaluator.Api.Controllers
 {
@@ -86,10 +87,16 @@ public async Task<IActionResult> GoogleLogin([FromBody] string idToken)
             Message = "Logare cu Google reușită!" 
         });
     }
-    catch (Exception ex)
-    {
-        return BadRequest("Autentificare Google eșuată: " + ex.Message);
-    }
+    
+    catch (InvalidJwtException)
+{
+    return BadRequest("Token Google invalid sau expirat.");
+}
+catch (Exception)
+{
+    return StatusCode(500, "Eroare internă la autentificarea Google.");
+}
+
 }
 
 // 💡 Mic truc: Mută logica de generare token într-o metodă separată 
@@ -114,6 +121,62 @@ private string GenerateJwtToken(User user)
     var token = tokenHandler.CreateToken(tokenDescriptor);
     return tokenHandler.WriteToken(token);
 }
+
+// Endpoint nou în AuthController.cs
+[Authorize]
+[HttpPut("profile")]
+public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+{
+    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+    var userId = int.Parse(userIdClaim);
+
+    var allowedSkinTypes = new[] { "oily", "dry", "combination", "sensitive", "normal" };
+    var allowedConcerns = new[] { "acne", "dehydration", "anti_aging", "dark_spots", "redness", "dullness" };
+    var allowedBudgets = new[] { "low", "medium", "high" };
+
+    if (!allowedSkinTypes.Contains(request.SkinType))
+        return BadRequest($"skin_type invalid. Valori permise: {string.Join(", ", allowedSkinTypes)}");
+
+    if (!allowedConcerns.Contains(request.MainConcern))
+        return BadRequest($"main_concern invalid. Valori permise: {string.Join(", ", allowedConcerns)}");
+
+    if (!allowedBudgets.Contains(request.BudgetLevel))
+        return BadRequest($"budget_level invalid. Valori permise: {string.Join(", ", allowedBudgets)}");
+
+    var user = await _context.Users.FindAsync(userId);
+    if (user == null) return NotFound();
+
+    user.SkinType = request.SkinType;
+    user.MainConcern = request.MainConcern;
+    user.BudgetLevel = request.BudgetLevel;
+
+    await _context.SaveChangesAsync();
+
+    return Ok(new { message = "Profil actualizat cu succes!" });
+}
+
+[Authorize]
+[HttpGet("profile")]
+public async Task<IActionResult> GetProfile()
+{
+    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+    var userId = int.Parse(userIdClaim);
+
+    var user = await _context.Users.FindAsync(userId);
+    if (user == null) return NotFound();
+
+    return Ok(new
+    {
+        user.Email,
+        user.SkinType,
+        user.MainConcern,
+        user.BudgetLevel,
+        user.CreatedAt
+    });
+}
+
 
         [HttpPost("login")]
 public async Task<IActionResult> Login([FromBody] LoginRequest request)
