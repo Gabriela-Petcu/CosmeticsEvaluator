@@ -6,11 +6,6 @@ Modul euristic de potrivire produs-utilizator.
 Scorul de compatibilitate este calculat pe baza unor reguli definite manual,
 inspirate de caracteristici generale ale produselor și de profilul utilizatorului.
 
-Această componentă:
-- nu este un model ML antrenat
-- nu învață ponderi din date
-- nu produce probabilități statistice
-- folosește un sistem de reguli explicabil pentru compatibilitate
 """
 
 from dataclasses import dataclass
@@ -43,8 +38,8 @@ CATEGORY_COLUMNS = {
 
 @dataclass
 class MatchResult:
-    FitScore: int
-    SePotriveste: int
+    FitScore: int #scor final
+    SePotriveste: int #1 sau 0 = verdict
     PositiveSignals: list[str]
     NegativeSignals: list[str]
 
@@ -297,7 +292,6 @@ def _name_contains(product_name: str, keywords: list[str]) -> bool:
 def _validate_category_columns(product: pd.Series) -> None:
     available = [col for col in CATEGORY_COLUMNS.values() if col in product.index]
     if not available:
-        # Nu mai aruncăm eroare — regulile de categorie vor returna 0 implicit
         return
 
 def _append_reason(
@@ -434,7 +428,6 @@ def _apply_budget_rules(
 
     # Adaugă o verificare la începutul funcției
     if pd.isna(price) or price <= 0:
-        # Dacă nu avem preț, penalizăm ușor pentru incertitudine sau ignorăm
         score -= 5 
         reasons_neg.append("Preț indisponibil pentru verificare buget.")
         return score

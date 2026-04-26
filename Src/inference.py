@@ -131,6 +131,7 @@ def add_ml_predictions(df: pd.DataFrame, bundle: dict[str, Any]) -> pd.DataFrame
     return out
 
 
+
 def build_baseline_ml_analysis_df(df: pd.DataFrame | None = None) -> pd.DataFrame:
     """
     Construiește DataFrame-ul complet de analiză, incluzând:

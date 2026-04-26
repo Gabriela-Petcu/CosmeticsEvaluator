@@ -56,6 +56,7 @@ namespace CosmeticsEvaluator.Api.Controllers
 
             try
             {
+                // Apelează serviciul ML cu datele complete
                 var result = await _mlService.GetPredictionAsync(request);
 
                 var entry = new EvaluationEntry

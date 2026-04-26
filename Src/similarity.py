@@ -9,8 +9,7 @@ from Src.feature_engineering import add_engineered_features
 def prepare_similarity_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
     Pregătește datasetul pentru un modul auxiliar de produse similare.
-    Nu face parte din verdictul final al aplicației, ci este folosit doar
-    pentru identificarea produselor apropiate ca profil numeric.
+    -elimin prod cu date lipsa
     """
     out = df.copy()
     out = add_engineered_features(out)
@@ -21,8 +20,7 @@ def prepare_similarity_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 def compute_similarity_matrix(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculează similaritatea cosinus între produse pe baza MODEL_FEATURES.
-    Această componentă este auxiliară și nu influențează verdictul final
-    de recomandare al aplicației.
+    -cs=o matrice patrata unde fiecare produs este comparat cu fiecare produs => scor intre 0 si 1
     """
     features = df[MODEL_FEATURES].copy()
 
@@ -65,6 +63,7 @@ def find_top_similar_products(
     prepared_df = prepare_similarity_dataframe(df)
     similarity_df = compute_similarity_matrix(prepared_df)
 
+    #cauta indexul produsului ales de utilizator
     if product_brand is not None:
         matches = prepared_df[
             (prepared_df["name"] == product_name) &
@@ -79,6 +78,7 @@ def find_top_similar_products(
         if matches.empty:
             raise ValueError(f"Produsul '{product_name}' nu a fost găsit în dataset.")
 
+    #elimina auto compararea => orodnare descrescatoare
     product_index = matches.index[0]
     similarity_scores = similarity_df.loc[product_index].drop(product_index)
 
@@ -89,6 +89,7 @@ def find_top_similar_products(
         if col in prepared_df.columns
     ]
 
+    #primele 5 produse similare
     result = prepared_df.loc[top_indices, result_columns].copy()
     result["similarity_score"] = similarity_scores.loc[top_indices].values
 

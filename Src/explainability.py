@@ -26,10 +26,10 @@ _SHAP_CACHE_LOCK = threading.Lock()
 
 @dataclass
 class FactorExplanation:
-    feature: str
-    feature_value: Any
-    shap_value: float
-    impact_abs: float
+    feature: str #numele variabilei
+    feature_value: Any #valoarea reala
+    shap_value: float #valoare shap
+    impact_abs: float 
     direction: str
 
 
@@ -144,6 +144,7 @@ def _extract_top_factors(
             )
         )
 
+    #sortam absolut, nu conteaza semnul
     factors.sort(key=lambda x: x.impact_abs, reverse=True)
     return factors[:top_k]
 
@@ -176,7 +177,7 @@ def explain_product(
 
     preprocessor = full_system.named_steps["preprocessor"]
     classifier = full_system.named_steps["classifier"]
-
+    #produsul trece prin aceleasi transformari ca la antrenare
     # Baseline scoring
     baseline_df = add_log_features(raw_product_df.copy())
     baseline_df = compute_score_with_scaler(baseline_df, score_scaler)

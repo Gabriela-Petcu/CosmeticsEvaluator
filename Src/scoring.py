@@ -37,6 +37,7 @@ class ScoreScaler:
     Memorează min/max pe TRAIN pentru a aplica aceeași normalizare și pe TEST.
     """
 
+    #memoria scaler ului
     def __init__(self):
         self.mins_ = {}
         self.maxs_ = {}
@@ -56,6 +57,7 @@ class ScoreScaler:
                     f"Coloana '{c}' conține doar valori lipsă și nu poate fi folosită în ScoreScaler.fit."
                 )
 
+            #capetele produsului
             self.mins_[c] = float(series.min())
             self.maxs_[c] = float(series.max())
 

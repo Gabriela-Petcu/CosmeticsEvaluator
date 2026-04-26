@@ -31,6 +31,7 @@ namespace CosmeticsEvaluator.Api.Controllers
             if (role == "Admin")
                 return Ok(await _context.EvaluationHistory.ToListAsync());
 
+            //user obsinuit vede doar evaluările proprii
             var userEvaluations = await _context.EvaluationHistory
                 .Where(x => x.UserId == userId)
                 .ToListAsync();
@@ -38,6 +39,7 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(userEvaluations);
         }
 
+        //de sters
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateEvaluationRequest request)
         {

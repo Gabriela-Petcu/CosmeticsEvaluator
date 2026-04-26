@@ -35,13 +35,20 @@ def add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
     review_score = out["review_score"].fillna(0)
     price_per_ounce_clean = out["price_per_ounce"].fillna(0)
 
+    #popularitate
     out["popularity_score"] = np.log1p(reviews) + np.log1p(loves)
+
+    #cat de bine interactioneaza oamenii cu produsul
     out["engagement_score"] = loves / (reviews + 1)
+
+    #raport calitate-pret
     out["value_score"] = np.where(
         price_per_ounce_clean > 0,
         review_score / price_per_ounce_clean,
         0
     )
+
+    #pt produse cu note mari dar putine voturi
     out["review_strength"] = review_score * np.log1p(reviews)
 
     return out.replace([np.inf, -np.inf], 0).fillna(0)

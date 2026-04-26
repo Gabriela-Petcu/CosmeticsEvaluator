@@ -71,8 +71,8 @@ def evaluate_product_for_user(
         raise TypeError(
             f"user_profile trebuie să fie instanță UserProfile, nu {type(user_profile).__name__}"
         )
+    #normalizare+validare
     product_df = _normalize_product_input(product)
-
     baseline_report = inspect_baseline_input(product_df)
 
     missing_fields = sorted(
@@ -112,6 +112,7 @@ def evaluate_product_for_user(
 
     bundle = load_bundle()
 
+    #calculeaza scorul de baza
     baseline_df = prepare_baseline_dataframe(product_df, bundle)
     if baseline_df.empty:
         return PipelineResponse(
@@ -125,7 +126,9 @@ def evaluate_product_for_user(
             result=None,
         )
 
+    #pregateste datele pt ai
     ml_df = prepare_ml_dataframe(baseline_df)
+    #parere ai
     full_df = add_ml_predictions(ml_df, bundle)
 
     if full_df.empty:
@@ -137,8 +140,8 @@ def evaluate_product_for_user(
             result=None,
         )
 
+    #personalizarea
     product_row = full_df.iloc[0]
-
     match_result = match_product_to_user(user_profile, product_row)
 
     final_result = build_final_recommendation(

@@ -16,12 +16,12 @@ namespace CosmeticsEvaluator.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly IConfiguration _config; // Adăugat pentru acces la appsettings.json
+        private readonly IConfiguration _config; 
 
         public AuthController(AppDbContext context, IConfiguration config)
         {
-            _context = context;
-            _config = config;
+            _context = context; //acces la baza de date
+            _config = config; //acces la appsettings.json
         }
 
         [HttpPost("register")]
@@ -99,8 +99,6 @@ catch (Exception)
 
 }
 
-// 💡 Mic truc: Mută logica de generare token într-o metodă separată 
-// ca să nu repeți codul de la Login-ul normal
 private string GenerateJwtToken(User user)
 {
     var tokenHandler = new JwtSecurityTokenHandler();
@@ -111,7 +109,7 @@ private string GenerateJwtToken(User user)
         {
             new Claim(ClaimTypes.Name, user.Email),
             new Claim(ClaimTypes.Role, user.Role),
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // Adaugă asta lângă Email și Role
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
         }),
         Expires = DateTime.UtcNow.AddDays(7),
         Issuer = _config["Jwt:Issuer"],
@@ -122,7 +120,6 @@ private string GenerateJwtToken(User user)
     return tokenHandler.WriteToken(token);
 }
 
-// Endpoint nou în AuthController.cs
 [Authorize]
 [HttpPut("profile")]
 public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
