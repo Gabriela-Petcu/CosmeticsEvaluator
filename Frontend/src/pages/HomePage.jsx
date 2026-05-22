@@ -20,11 +20,18 @@ const CATEGORIES = [
   { icon: '👁️', name: 'ochi', filter: 'eye' },
 ]
 
+const VERDICT_BADGE = {
+  'Recomandat': 'bg-green-100 text-green-800',
+  'Nerecomandat': 'bg-red-100 text-red-800',
+  default: 'bg-amber-100 text-amber-800',
+}
+
 export default function HomePage() {
   const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [recentHistory, setRecentHistory] = useState([])
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -36,19 +43,49 @@ export default function HomePage() {
 
   const handleSearch = (e) => {
     e.preventDefault()
+    if (!isAuthenticated) { setShowAuthModal(true); return }
     if (search.trim()) navigate(`/evaluate?q=${encodeURIComponent(search)}`)
     else navigate('/evaluate')
   }
 
-  const VERDICT_BADGE = {
-    'Recomandat': 'bg-green-100 text-green-800',
-    'Nerecomandat': 'bg-red-100 text-red-800',
-    default: 'bg-amber-100 text-amber-800',
+  const handleCategory = (filter) => {
+    if (!isAuthenticated) { setShowAuthModal(true); return }
+    navigate(`/evaluate?q=${filter}`)
   }
 
   return (
     <div>
-      {/* HERO — full width */}
+      {/* MODAL AUTH */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4"
+          onClick={() => setShowAuthModal(false)}>
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-xl text-center flex flex-col gap-5"
+            onClick={e => e.stopPropagation()}>
+            <div className="text-4xl">✨</div>
+            <h2 className="font-serif text-2xl font-light text-ink">
+              Bucură-te de SkinIQ<br />
+              <em className="italic text-rose-primary">gratuit.</em>
+            </h2>
+            <p className="text-sm text-muted leading-relaxed">
+              Creează-ți un cont gratuit pentru a evalua produse, a primi recomandări personalizate și a-ți salva istoricul.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Link to="/register" className="btn-primary flex items-center justify-center gap-2 py-3">
+                creează cont gratuit
+              </Link>
+              <Link to="/login" className="btn-outline flex items-center justify-center gap-2 py-3">
+                am deja cont — autentifică-mă
+              </Link>
+            </div>
+            <button onClick={() => setShowAuthModal(false)}
+              className="text-xs text-soft hover:text-muted transition-colors cursor-pointer">
+              poate mai târziu
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* HERO */}
       <div className="bg-cream-warm border-b border-rose-border px-16 py-20 flex flex-col items-center text-center gap-8">
         <div className="flex items-center gap-2">
           <div className="w-8 h-px bg-rose-primary" />
@@ -90,7 +127,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* PROFILE STRIP — doar dacă e autentificat */}
+      {/* PROFILE STRIP */}
       {isAuthenticated && user && (
         <div className="bg-rose-light border-b border-rose-border px-9 py-3 flex items-center gap-4">
           <span className="text-xs font-medium text-rose-dark tracking-wide">profilul tău activ</span>
@@ -112,18 +149,19 @@ export default function HomePage() {
         </h2>
         <div className="grid grid-cols-5 gap-4 max-w-3xl mx-auto">
           {CATEGORIES.map(cat => (
-  <Link to={`/evaluate?q=${cat.filter}`} key={cat.name}
-    className="card flex flex-col items-center gap-3 py-5 hover:border-rose-mid transition-colors group cursor-pointer">
-    <div className="w-12 h-12 rounded-full bg-rose-light flex items-center justify-center text-2xl group-hover:bg-rose-border transition-colors">
-      {cat.icon}
-    </div>
-    <div className="text-xs text-gray-600 font-medium">{cat.name}</div>
-  </Link>
-))}
+            <div key={cat.name}
+              onClick={() => handleCategory(cat.filter)}
+              className="card flex flex-col items-center gap-3 py-5 hover:border-rose-mid transition-colors group cursor-pointer">
+              <div className="w-12 h-12 rounded-full bg-rose-light flex items-center justify-center text-2xl group-hover:bg-rose-border transition-colors">
+                {cat.icon}
+              </div>
+              <div className="text-xs text-gray-600 font-medium">{cat.name}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* EVALUĂRI RECENTE — dacă e autentificat și are istoric */}
+      {/* EVALUĂRI RECENTE */}
       {isAuthenticated && recentHistory.length > 0 && (
         <div className="px-9 py-10 bg-cream-warm border-b border-rose-border">
           <div className="flex items-baseline justify-between mb-6">
@@ -163,7 +201,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* CTA — dacă nu e autentificat */}
+      {/* CTA neautentificat */}
       {!isAuthenticated && (
         <div className="px-9 py-12 bg-cream-warm border-b border-rose-border flex flex-col items-center gap-5 text-center">
           <h2 className="font-serif text-3xl font-light text-ink">
@@ -175,7 +213,9 @@ export default function HomePage() {
           </p>
           <div className="flex gap-4">
             <Link to="/register" className="btn-primary px-8 py-3">creează cont gratuit</Link>
-            <Link to="/evaluate" className="btn-outline px-8 py-3">evaluează fără cont</Link>
+            <button onClick={() => setShowAuthModal(true)} className="btn-outline px-8 py-3">
+              am deja cont
+            </button>
           </div>
         </div>
       )}

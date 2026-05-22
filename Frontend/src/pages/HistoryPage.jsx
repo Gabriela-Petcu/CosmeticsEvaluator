@@ -25,6 +25,7 @@ export default function HistoryPage() {
   const [sort, setSort] = useState('data')
   const [selected, setSelected] = useState(null)
   const [reEvaluating, setReEvaluating] = useState(false)
+  const [deleteModal, setDeleteModal] = useState(null) // id-ul evaluării de șters
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/login'); return }
@@ -60,77 +61,68 @@ export default function HistoryPage() {
     setFiltered(result)
   }, [search, filter, sort, history])
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Ștergi această evaluare?')) return
+  const confirmDelete = async () => {
+    if (!deleteModal) return
     try {
-      await deleteEvaluation(id)
-      const updated = history.filter(e => e.id !== id)
+      await deleteEvaluation(deleteModal)
+      const updated = history.filter(e => e.id !== deleteModal)
       setHistory(updated)
-      if (selected?.id === id) setSelected(updated[0] || null)
+      if (selected?.id === deleteModal) setSelected(updated[0] || null)
     } catch {
       alert('Eroare la ștergere.')
+    } finally {
+      setDeleteModal(null)
     }
   }
 
-  // Re-evaluează produsul și navighează la rezultat
   const handleViewResult = async () => {
-  if (!selected) return
-  setReEvaluating(true)
-  try {
-    // Încearcă ID numeric
-    const numericId = parseInt(selected.productId)
-
-    if (!isNaN(numericId) && numericId > 0) {
-      const res = await evaluateById(numericId)
-      sessionStorage.setItem('skiniq_result', JSON.stringify(res.data))
+    if (!selected) return
+    setReEvaluating(true)
+    try {
+      const numericId = parseInt(selected.productId)
+      if (!isNaN(numericId) && numericId > 0) {
+        const res = await evaluateById(numericId)
+        sessionStorage.setItem('skiniq_result', JSON.stringify(res.data))
+        navigate('/result/latest')
+        return
+      }
+      const productsRes = await getProducts()
+      const products = productsRes.data || []
+      const found = products.find(p => {
+        const pName = (p.name || '').toLowerCase().trim()
+        const sName = (selected.name || selected.productId || '').toLowerCase().trim()
+        return pName === sName || pName.includes(sName) || sName.includes(pName)
+      })
+      if (found) {
+        const res = await evaluateById(found.id)
+        sessionStorage.setItem('skiniq_result', JSON.stringify(res.data))
+        navigate('/result/latest')
+        return
+      }
+      const partial = {
+        scorFinal: 0,
+        merita: selected.finalVerdict === 'Recomandat' ? 1 : 0,
+        meritaML: selected.finalVerdict === 'Recomandat' ? 1 : 0,
+        probabilitateML: selected.mlProbability || 0,
+        fitScore: 0,
+        sePotriveste: 0,
+        verdictFinal: selected.finalVerdict || '',
+        explicatieFinala: '',
+        motivePozitive: [],
+        motiveNegative: [],
+        topFactoriML: [],
+        productName: selected.name || selected.productId,
+        brand: selected.brand || '',
+        price: selected.price || null,
+      }
+      sessionStorage.setItem('skiniq_result', JSON.stringify(partial))
       navigate('/result/latest')
-      return
+    } catch (err) {
+      console.error('handleViewResult error:', err)
+    } finally {
+      setReEvaluating(false)
     }
-
-    // Caută după nume în catalog
-    const productsRes = await getProducts()
-    const products = productsRes.data || []
-
-    const found = products.find(p => {
-      const pName = (p.name || '').toLowerCase().trim()
-      const sName = (selected.name || selected.productId || '').toLowerCase().trim()
-      return pName === sName || pName.includes(sName) || sName.includes(pName)
-    })
-
-    if (found) {
-      const res = await evaluateById(found.id)
-      sessionStorage.setItem('skiniq_result', JSON.stringify(res.data))
-      navigate('/result/latest')
-      return
-    }
-
-    // Fallback — afișăm ce avem din istoric
-    const partial = {
-      scorFinal: 0,
-      merita: selected.finalVerdict === 'Recomandat' ? 1 : 0,
-      meritaML: selected.finalVerdict === 'Recomandat' ? 1 : 0,
-      probabilitateML: selected.mlProbability || 0,
-      fitScore: 0,
-      sePotriveste: 0,
-      verdictFinal: selected.finalVerdict || '',
-      explicatieFinala: '',
-      motivePozitive: [],
-      motiveNegative: [],
-      topFactoriML: [],
-      productName: selected.name || selected.productId,
-      brand: selected.brand || '',
-      price: selected.price || null,
-    }
-    sessionStorage.setItem('skiniq_result', JSON.stringify(partial))
-    navigate('/result/latest')
-
-  } catch (err) {
-    console.error('handleViewResult error:', err)
-    alert('Nu s-a putut încărca rezultatul: ' + (err.message || 'eroare necunoscută'))
-  } finally {
-    setReEvaluating(false)
   }
-}
 
   const recCount = history.filter(h => h.finalVerdict === 'Recomandat').length
   const noCount = history.filter(h => h.finalVerdict === 'Nerecomandat').length
@@ -138,6 +130,34 @@ export default function HistoryPage() {
 
   return (
     <div>
+      {/* MODAL ȘTERGERE */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4"
+          onClick={() => setDeleteModal(null)}>
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-xl text-center flex flex-col gap-5"
+            onClick={e => e.stopPropagation()}>
+            <div className="text-4xl">🗑️</div>
+            <h2 className="font-serif text-2xl font-light text-ink">
+              Ștergi această<br />
+              <em className="italic text-rose-primary">evaluare?</em>
+            </h2>
+            <p className="text-sm text-muted leading-relaxed">
+              Această acțiune este permanentă și nu poate fi anulată. Evaluarea va fi eliminată din istoricul tău.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button onClick={confirmDelete}
+                className="flex items-center justify-center gap-2 py-3 px-6 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors cursor-pointer">
+                🗑️ da, șterge evaluarea
+              </button>
+              <button onClick={() => setDeleteModal(null)}
+                className="btn-outline py-3">
+                nu, păstrează-o
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HERO */}
       <div className="bg-cream-warm border-b border-rose-border px-9 py-7 flex items-end justify-between">
         <div>
@@ -255,8 +275,8 @@ export default function HistoryPage() {
                       </div>
                     </div>
                     <button
-                      onClick={e => { e.stopPropagation(); handleDelete(entry.id) }}
-                      className="text-soft hover:text-red-500 transition-colors text-sm flex-shrink-0 cursor-pointer"
+                      onClick={e => { e.stopPropagation(); setDeleteModal(entry.id) }}
+                      className="text-soft hover:text-red-400 transition-colors text-sm flex-shrink-0 cursor-pointer"
                       title="șterge">
                       🗑️
                     </button>
@@ -309,15 +329,12 @@ export default function HistoryPage() {
               </div>
 
               <div className="flex flex-col gap-2 mt-auto">
-                <button
-                  onClick={handleViewResult}
-                  disabled={reEvaluating}
-                  className="btn-primary flex items-center justify-center gap-2 py-2.5 text-xs disabled:opacity-60">
+                <button onClick={handleViewResult} disabled={reEvaluating}
+                  className="btn-primary flex items-center justify-center gap-2 py-2.5 text-xs disabled:opacity-60 cursor-pointer">
                   {reEvaluating ? '⚙️ se încarcă...' : '👁️ vezi rezultatul complet'}
                 </button>
-                <button
-                  onClick={() => handleDelete(selected.id)}
-                  className="flex items-center justify-center gap-2 py-2.5 text-xs border border-red-200 text-red-500 rounded hover:bg-red-50 transition-colors cursor-pointer">
+                <button onClick={() => setDeleteModal(selected.id)}
+                  className="flex items-center justify-center gap-2 py-2.5 text-xs border border-red-200 text-red-400 rounded-lg hover:bg-red-50 transition-colors cursor-pointer">
                   🗑️ șterge evaluarea
                 </button>
               </div>
