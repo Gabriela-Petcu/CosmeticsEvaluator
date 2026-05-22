@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getHistory, deleteEvaluation } from '../api/evaluate'
+import { getHistory, deleteEvaluation, evaluateById, getProducts } from '../api/evaluate'
 
 const VERDICT_STYLES = {
   'Recomandat': { border: 'border-green-200', bg: 'bg-green-50', badge: 'bg-green-100 text-green-800', score: 'text-green-600' },
@@ -24,6 +24,7 @@ export default function HistoryPage() {
   const [filter, setFilter] = useState('toate')
   const [sort, setSort] = useState('data')
   const [selected, setSelected] = useState(null)
+  const [reEvaluating, setReEvaluating] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/login'); return }
@@ -70,6 +71,66 @@ export default function HistoryPage() {
       alert('Eroare la ștergere.')
     }
   }
+
+  // Re-evaluează produsul și navighează la rezultat
+  const handleViewResult = async () => {
+  if (!selected) return
+  setReEvaluating(true)
+  try {
+    // Încearcă ID numeric
+    const numericId = parseInt(selected.productId)
+
+    if (!isNaN(numericId) && numericId > 0) {
+      const res = await evaluateById(numericId)
+      sessionStorage.setItem('skiniq_result', JSON.stringify(res.data))
+      navigate('/result/latest')
+      return
+    }
+
+    // Caută după nume în catalog
+    const productsRes = await getProducts()
+    const products = productsRes.data || []
+
+    const found = products.find(p => {
+      const pName = (p.name || '').toLowerCase().trim()
+      const sName = (selected.name || selected.productId || '').toLowerCase().trim()
+      return pName === sName || pName.includes(sName) || sName.includes(pName)
+    })
+
+    if (found) {
+      const res = await evaluateById(found.id)
+      sessionStorage.setItem('skiniq_result', JSON.stringify(res.data))
+      navigate('/result/latest')
+      return
+    }
+
+    // Fallback — afișăm ce avem din istoric
+    const partial = {
+      scorFinal: 0,
+      merita: selected.finalVerdict === 'Recomandat' ? 1 : 0,
+      meritaML: selected.finalVerdict === 'Recomandat' ? 1 : 0,
+      probabilitateML: selected.mlProbability || 0,
+      fitScore: 0,
+      sePotriveste: 0,
+      verdictFinal: selected.finalVerdict || '',
+      explicatieFinala: '',
+      motivePozitive: [],
+      motiveNegative: [],
+      topFactoriML: [],
+      productName: selected.name || selected.productId,
+      brand: selected.brand || '',
+      price: selected.price || null,
+    }
+    sessionStorage.setItem('skiniq_result', JSON.stringify(partial))
+    navigate('/result/latest')
+
+  } catch (err) {
+    console.error('handleViewResult error:', err)
+    alert('Nu s-a putut încărca rezultatul: ' + (err.message || 'eroare necunoscută'))
+  } finally {
+    setReEvaluating(false)
+  }
+}
 
   const recCount = history.filter(h => h.finalVerdict === 'Recomandat').length
   const noCount = history.filter(h => h.finalVerdict === 'Nerecomandat').length
@@ -121,7 +182,9 @@ export default function HistoryPage() {
           ].map(f => (
             <button key={f.id} onClick={() => setFilter(f.id)}
               className={`text-xs px-4 py-1.5 rounded-full border transition-colors cursor-pointer
-                ${filter === f.id ? 'bg-rose-light border-rose-mid text-rose-dark font-medium' : 'border-gray-200 text-muted hover:border-rose-mid bg-white'}`}>
+                ${filter === f.id
+                  ? 'bg-rose-light border-rose-mid text-rose-dark font-medium'
+                  : 'border-gray-200 text-muted hover:border-rose-mid bg-white'}`}>
               {f.label}
             </button>
           ))}
@@ -204,7 +267,7 @@ export default function HistoryPage() {
           )}
         </div>
 
-        {/* SIDEBAR DETALII */}
+        {/* SIDEBAR */}
         <div className="px-6 py-6 bg-cream-warm flex flex-col gap-5">
           <h2 className="section-title border-b border-rose-border pb-3">Detalii evaluare</h2>
 
@@ -219,25 +282,17 @@ export default function HistoryPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                {[
-                  {
-                    label: 'PROBABILITATE ML',
-                    value: selected.mlProbability ? `${Math.round(selected.mlProbability * 100)}%` : '—',
-                    percent: selected.mlProbability ? selected.mlProbability * 100 : 0,
-                    color: 'bg-rose-primary',
-                  },
-                ].map(s => (
-                  <div key={s.label}>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="text-xs text-muted">{s.label}</div>
-                      <div className="text-sm font-medium text-rose-primary">{s.value}</div>
-                    </div>
-                    <div className="h-1.5 bg-rose-border rounded-full overflow-hidden">
-                      <div className={`h-full ${s.color} rounded-full`} style={{ width: `${s.percent}%` }} />
-                    </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-xs text-muted">PROBABILITATE ML</div>
+                  <div className="text-sm font-medium text-rose-primary">
+                    {selected.mlProbability ? `${Math.round(selected.mlProbability * 100)}%` : '—'}
                   </div>
-                ))}
+                </div>
+                <div className="h-1.5 bg-rose-border rounded-full overflow-hidden">
+                  <div className="h-full bg-rose-primary rounded-full"
+                    style={{ width: `${selected.mlProbability ? selected.mlProbability * 100 : 0}%` }} />
+                </div>
               </div>
 
               <div className={`p-3 rounded-xl border ${getStyle(selected.finalVerdict).border} ${getStyle(selected.finalVerdict).bg}`}>
@@ -254,11 +309,11 @@ export default function HistoryPage() {
               </div>
 
               <div className="flex flex-col gap-2 mt-auto">
-                <button className="btn-primary flex items-center justify-center gap-2 py-2.5 text-xs">
-                  👁️ vezi rezultatul complet
-                </button>
-                <button className="btn-outline flex items-center justify-center gap-2 py-2.5 text-xs">
-                  🔖 salvează produsul
+                <button
+                  onClick={handleViewResult}
+                  disabled={reEvaluating}
+                  className="btn-primary flex items-center justify-center gap-2 py-2.5 text-xs disabled:opacity-60">
+                  {reEvaluating ? '⚙️ se încarcă...' : '👁️ vezi rezultatul complet'}
                 </button>
                 <button
                   onClick={() => handleDelete(selected.id)}

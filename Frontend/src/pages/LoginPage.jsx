@@ -16,27 +16,47 @@ export default function LoginPage() {
   const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+  e.preventDefault()
+  setError('')
+  setLoading(true)
+  try {
+    const res = await loginApi(email, password)
+    const { token, email: userEmail, role } = res.data
+
+    // Salvăm token-ul înainte de getProfile
+    localStorage.setItem('skiniq_token', token)
+
+    let skinType = 'normal'
+    let mainConcern = 'anti_aging'
+    let budgetLevel = 'medium'
+
     try {
-      const res = await loginApi(email, password)
-      const { token, email: userEmail, role } = res.data
       const profileRes = await getProfile()
-      login(token, {
-        email: userEmail,
-        role,
-        skinType: profileRes.data.skinType,
-        mainConcern: profileRes.data.mainConcern,
-        budgetLevel: profileRes.data.budgetLevel,
-      })
-      navigate('/')
-    } catch (err) {
-      setError(err.response?.data || 'Email sau parolă incorectă.')
-    } finally {
-      setLoading(false)
+      skinType = profileRes.data.skinType || skinType
+      mainConcern = profileRes.data.mainConcern || mainConcern
+      budgetLevel = profileRes.data.budgetLevel || budgetLevel
+    } catch {
+      // Profilul nu e critic — continuăm cu valorile default
     }
+
+    login(token, {
+      email: userEmail,
+      role,
+      skinType,
+      mainConcern,
+      budgetLevel,
+    })
+
+    navigate('/')
+  } catch (err) {
+    console.error('Login error:', err)
+    const msg = err.response?.data
+    if (typeof msg === 'string') setError(msg)
+    else setError('Email sau parolă incorectă.')
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <div className="grid grid-cols-2 min-h-[calc(100vh-65px)]">

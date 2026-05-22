@@ -43,14 +43,20 @@ export default function EvaluatePage() {
   const [categories, setCategories] = useState({})
 
   useEffect(() => {
-    getProducts()
-      .then(res => {
-        setProducts(res.data || [])
-        setFiltered(res.data || [])
-      })
-      .catch(() => setProducts([]))
-      .finally(() => setLoadingProducts(false))
-  }, [])
+  const params = new URLSearchParams(window.location.search)
+  const urlQuery = params.get('q')
+  if (urlQuery) {
+    setSearch(urlQuery)
+    setTab('catalog')
+  }
+
+  getProducts()
+    .then(res => {
+      setProducts(res.data || [])
+    })
+    .catch(() => setProducts([]))
+    .finally(() => setLoadingProducts(false))
+}, [])
 
   useEffect(() => {
     if (!search.trim()) {
@@ -116,6 +122,23 @@ export default function EvaluatePage() {
     acne: 'acnee', dehydration: 'deshidratare', anti_aging: 'anti-aging',
     dark_spots: 'pete', redness: 'roșeață', dullness: 'ten tern',
   }
+
+  const cleanName = (name) => {
+  if (!name) return ''
+  return name
+    .replace(/,Ñ¢/g, '®')
+    .replace(/Ñ¢/g, '®')
+    .replace(/√®/g, 'è')
+    .replace(/√©/g, 'é')
+    .replace(/√à/g, 'à')
+    .replace(/¬Æ/g, '®')
+    .replace(/â€™/g, "'")
+    .replace(/â€"/g, '—')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã¨/g, 'è')
+    .replace(/[^\x00-\x7F\u00C0-\u024F]/g, '')
+    .trim()
+}
 
   return (
     <div>
@@ -197,7 +220,7 @@ export default function EvaluatePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-medium tracking-widest text-soft">{product.brand}</div>
-                        <div className="text-sm font-medium text-ink truncate">{product.name}</div>
+                        <div className="text-sm font-medium text-ink truncate">{cleanName(product.name)}</div>
                       </div>
                       {selectedProduct?.id === product.id && (
                         <div className="w-5 h-5 rounded-full bg-rose-primary flex items-center justify-center flex-shrink-0">

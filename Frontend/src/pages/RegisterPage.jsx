@@ -55,30 +55,38 @@ export default function RegisterPage() {
   const strengthColor = ['', 'bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500']
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
+  e.preventDefault()
+  setError('')
 
-    if (password !== confirmPassword) {
-      setError('Parolele nu coincid.')
-      return
-    }
-    if (!agreed) {
-      setError('Trebuie să fii de acord cu termenii.')
-      return
-    }
-
-    setLoading(true)
-    try {
-      const res = await registerApi(email, password, skinType, mainConcern, budgetLevel)
-      const { token, email: userEmail, role } = res.data
-      login(token, { email: userEmail, role, skinType, mainConcern, budgetLevel })
-      navigate('/')
-    } catch (err) {
-      setError(err.response?.data || 'Eroare la înregistrare. Încearcă din nou.')
-    } finally {
-      setLoading(false)
-    }
+  if (password !== confirmPassword) {
+    setError('Parolele nu coincid.')
+    return
   }
+  if (!agreed) {
+    setError('Trebuie să fii de acord cu termenii.')
+    return
+  }
+  if (passwordStrength() < 2) {
+    setError('Parola este prea slabă. Adaugă litere mari și cifre.')
+    return
+  }
+
+  setLoading(true)
+  try {
+    const res = await registerApi(email, password, skinType, mainConcern, budgetLevel)
+    const { token, email: userEmail, role } = res.data
+    login(token, { email: userEmail, role, skinType, mainConcern, budgetLevel })
+    navigate('/')
+  } catch (err) {
+    console.error('Register error:', err)
+    const msg = err.response?.data
+    if (typeof msg === 'string') setError(msg)
+    else if (msg?.errors) setError(Object.values(msg.errors).flat().join(' '))
+    else setError('Eroare la înregistrare. Încearcă din nou.')
+  } finally {
+    setLoading(false)
+  }
+}
 
   const strength = passwordStrength()
 

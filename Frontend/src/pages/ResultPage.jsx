@@ -27,6 +27,14 @@ function getVerdictConfig(verdict) {
   return VERDICT_CONFIG.default
 }
 
+// Helper — citește câmpul indiferent de majuscule
+function g(obj, ...keys) {
+  for (const key of keys) {
+    if (obj[key] !== undefined && obj[key] !== null) return obj[key]
+  }
+  return null
+}
+
 export default function ResultPage() {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
@@ -36,7 +44,28 @@ export default function ResultPage() {
     const saved = sessionStorage.getItem('skiniq_result')
     if (!saved) { navigate('/evaluate'); return }
     try {
-      setResult(JSON.parse(saved))
+      const parsed = JSON.parse(saved)
+      // Normalizăm — extragem originalResult dacă există
+      const raw = parsed.originalResult || parsed.OriginalResult || parsed
+      const productInfo = parsed.productInfo || parsed.ProductInfo || {}
+
+      const normalized = {
+        ScorFinal: g(raw, 'scorFinal', 'ScorFinal') ?? 0,
+        Merita: g(raw, 'merita', 'Merita') ?? 0,
+        MeritaML: g(raw, 'meritaML', 'MeritaML') ?? 0,
+        ProbabilitateML: g(raw, 'probabilitateML', 'ProbabilitateML') ?? 0,
+        FitScore: g(raw, 'fitScore', 'FitScore') ?? 0,
+        SePotriveste: g(raw, 'sePotriveste', 'SePotriveste') ?? 0,
+        VerdictFinal: g(raw, 'verdictFinal', 'VerdictFinal') || '',
+        ExplicatieFinala: g(raw, 'explicatieFinala', 'ExplicatieFinala') || '',
+        MotivePozitive: g(raw, 'motivePozitive', 'MotivePozitive') || [],
+        MotiveNegative: g(raw, 'motiveNegative', 'MotiveNegative') || [],
+        TopFactoriML: g(raw, 'topFactoriML', 'TopFactoriML') || [],
+        productName: g(productInfo, 'name', 'Name') || g(raw, 'productId') || 'Produs evaluat',
+        brand: g(productInfo, 'brand', 'Brand') || '',
+        price: g(productInfo, 'price', 'Price') || null,
+      }
+      setResult(normalized)
     } catch {
       navigate('/evaluate')
     }
@@ -51,9 +80,9 @@ export default function ResultPage() {
   }
 
   const vc = getVerdictConfig(result.VerdictFinal)
-  const scorePercent = Math.min(100, Math.max(0, result.ScorFinal || 0))
-  const mlPercent = Math.round((result.ProbabilitateML || 0) * 100)
-  const fitPercent = Math.min(100, Math.max(0, result.FitScore || 0))
+  const scorePercent = Math.min(100, Math.max(0, result.ScorFinal))
+  const mlPercent = Math.round(result.ProbabilitateML * 100)
+  const fitPercent = Math.min(100, Math.max(0, result.FitScore))
 
   return (
     <div>
@@ -64,19 +93,20 @@ export default function ResultPage() {
         <span className="text-ink">rezultat evaluare</span>
       </div>
 
-      {/* HERO — produs + verdict */}
+      {/* HERO */}
       <div className={`px-9 py-7 border-b ${vc.border} ${vc.bg} flex items-center gap-6`}>
         <div className="w-16 h-20 rounded-xl bg-white border border-rose-border flex items-center justify-center text-3xl flex-shrink-0">
           🧴
         </div>
         <div className="flex-1">
           <div className="text-xs font-medium tracking-widest text-soft mb-1">PRODUS EVALUAT</div>
+          {result.brand && (
+            <div className="text-xs font-medium tracking-widest text-soft mb-1">{result.brand.toUpperCase()}</div>
+          )}
           <div className="font-serif text-2xl font-light text-ink leading-tight">
-            {result.productName || result.productId || 'Produs evaluat'}
+            {result.productName}
           </div>
           <div className="text-xs text-muted mt-2 flex items-center gap-3">
-            {result.reviewScore && <span>⭐ {result.reviewScore} / 5</span>}
-            {result.nOfReviews && <span>{result.nOfReviews?.toLocaleString()} recenzii</span>}
             {result.price && <span>${result.price}</span>}
           </div>
         </div>
@@ -101,12 +131,10 @@ export default function ResultPage() {
           <div>
             <h2 className="section-title mb-5">Scorurile evaluării</h2>
             <div className="grid grid-cols-2 gap-3">
-
-              {/* Scor final — mare */}
               <div className="col-span-2 bg-rose-light border border-rose-border rounded-xl p-5">
                 <div className="text-xs font-medium tracking-widest text-soft mb-2">SCOR FINAL BASELINE</div>
                 <div className="font-serif text-5xl font-light text-rose-primary leading-none">
-                  {result.ScorFinal?.toFixed(1)}
+                  {result.ScorFinal.toFixed(1)}
                 </div>
                 <div className="mt-3 h-1.5 bg-rose-border rounded-full overflow-hidden">
                   <div className="h-full bg-rose-primary rounded-full transition-all"
@@ -115,7 +143,6 @@ export default function ResultPage() {
                 <div className="text-xs text-rose-deeper mt-2">din 100 · prag recomandare = percentila 75</div>
               </div>
 
-              {/* ML */}
               <div className="card">
                 <div className="text-xs font-medium tracking-widest text-soft mb-2">PROBABILITATE ML</div>
                 <div className={`font-serif text-3xl font-light ${mlPercent >= 75 ? 'text-green-600' : mlPercent >= 50 ? 'text-amber-600' : 'text-red-500'}`}>
@@ -128,7 +155,6 @@ export default function ResultPage() {
                 <div className="text-xs text-muted mt-1.5">model logistic regression</div>
               </div>
 
-              {/* FitScore */}
               <div className="card">
                 <div className="text-xs font-medium tracking-widest text-soft mb-2">COMPATIBILITATE PROFIL</div>
                 <div className={`font-serif text-3xl font-light ${fitPercent >= 60 ? 'text-green-600' : 'text-amber-600'}`}>
@@ -178,19 +204,22 @@ export default function ResultPage() {
               <h2 className="section-title mb-4">Top factori ML (SHAP)</h2>
               <div className="flex flex-col gap-2">
                 {result.TopFactoriML.map((factor, i) => {
-                  const isPositive = factor.direction === 'creste_probabilitatea'
-                  const absVal = Math.abs(factor.shap_value)
-                  const barWidth = Math.min(100, absVal * 300)
+                  const shapVal = g(factor, 'shap_value', 'shapValue') || 0
+                  const featVal = g(factor, 'feature_value', 'featureValue')
+                  const featName = g(factor, 'feature') || ''
+                  const direction = g(factor, 'direction') || ''
+                  const isPositive = direction === 'creste_probabilitatea'
+                  const barWidth = Math.min(100, Math.abs(shapVal) * 300)
                   return (
                     <div key={i} className="flex items-center gap-3 p-3 border border-rose-border rounded-xl bg-white">
                       <div className="font-serif text-lg font-light text-rose-primary w-5 text-center flex-shrink-0">
                         {i + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium font-mono text-ink">{factor.feature}</div>
+                        <div className="text-xs font-medium font-mono text-ink">{featName}</div>
                         <div className="text-xs text-muted mt-0.5">
-                          valoare: {factor.feature_value !== null ? Number(factor.feature_value).toFixed(2) : '—'}
-                          · SHAP: {factor.shap_value > 0 ? '+' : ''}{factor.shap_value.toFixed(4)}
+                          valoare: {featVal !== null && featVal !== undefined ? Number(featVal).toFixed(2) : '—'}
+                          · SHAP: {shapVal > 0 ? '+' : ''}{shapVal.toFixed(4)}
                         </div>
                         <div className="mt-1.5 h-1 bg-gray-100 rounded-full overflow-hidden">
                           <div className={`h-full rounded-full ${isPositive ? 'bg-green-400' : 'bg-red-400'}`}
@@ -221,8 +250,7 @@ export default function ResultPage() {
                 {result.MotivePozitive && result.MotivePozitive.length > 0 ? (
                   result.MotivePozitive.map((m, i) => (
                     <div key={i} className="flex items-start gap-2 bg-green-50 rounded-lg p-2.5 text-xs text-green-800 leading-relaxed">
-                      <span className="flex-shrink-0 mt-0.5">✓</span>
-                      {m}
+                      <span className="flex-shrink-0 mt-0.5">✓</span>{m}
                     </div>
                   ))
                 ) : (
@@ -234,8 +262,7 @@ export default function ResultPage() {
                 {result.MotiveNegative && result.MotiveNegative.length > 0 ? (
                   result.MotiveNegative.map((m, i) => (
                     <div key={i} className="flex items-start gap-2 bg-red-50 rounded-lg p-2.5 text-xs text-red-800 leading-relaxed">
-                      <span className="flex-shrink-0 mt-0.5">✗</span>
-                      {m}
+                      <span className="flex-shrink-0 mt-0.5">✗</span>{m}
                     </div>
                   ))
                 ) : (
@@ -265,25 +292,17 @@ export default function ResultPage() {
             </div>
           </div>
 
-          {/* Evaluare nouă */}
+          {/* Despre scor */}
           <div className="card bg-cream-warm">
             <div className="text-xs font-medium tracking-widest text-soft mb-3">DESPRE ACEST SCOR</div>
             <div className="flex flex-col gap-2 text-xs text-muted leading-relaxed">
-              <p>
-                <strong className="text-ink">Scorul baseline</strong> combină rating-ul, numărul de recenzii, loves și prețul/oz cu ponderi fixe: 50% rating, 20% recenzii, 20% loves, 10% preț.
-              </p>
-              <p>
-                <strong className="text-ink">Modelul ML</strong> este un clasificator de regresie logistică antrenat pe 9.000+ produse Sephora, care folosește feature-uri derivate din datele brute.
-              </p>
-              <p>
-                <strong className="text-ink">Compatibilitatea</strong> este calculată euristic pe baza tipului tău de ten, preocupării principale și bugetului.
-              </p>
+              <p><strong className="text-ink">Scorul baseline</strong> combină rating-ul, numărul de recenzii, loves și prețul/oz cu ponderi fixe: 50% rating, 20% recenzii, 20% loves, 10% preț.</p>
+              <p><strong className="text-ink">Modelul ML</strong> este un clasificator de regresie logistică antrenat pe 9.000+ produse Sephora.</p>
+              <p><strong className="text-ink">Compatibilitatea</strong> este calculată euristic pe baza tipului tău de ten, preocupării principale și bugetului.</p>
             </div>
           </div>
 
-          {/* Link istoric */}
-          <Link to="/history"
-            className="flex items-center justify-center gap-2 text-xs text-rose-primary hover:underline">
+          <Link to="/history" className="flex items-center justify-center gap-2 text-xs text-rose-primary hover:underline">
             📋 vezi toate evaluările tale →
           </Link>
         </div>
@@ -305,11 +324,9 @@ function ComponentRow({ icon, iconBg, title, desc, value, positive, neutral }) {
         </div>
       </div>
       <div className={`text-xs font-medium px-3 py-1 rounded-full
-        ${neutral
-          ? 'bg-rose-light text-rose-dark'
-          : positive
-            ? 'bg-green-100 text-green-700'
-            : 'bg-red-100 text-red-700'}`}>
+        ${neutral ? 'bg-rose-light text-rose-dark'
+          : positive ? 'bg-green-100 text-green-700'
+          : 'bg-red-100 text-red-700'}`}>
         {value}
       </div>
     </div>

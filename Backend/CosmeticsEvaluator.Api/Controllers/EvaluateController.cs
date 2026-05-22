@@ -130,7 +130,7 @@ namespace CosmeticsEvaluator.Api.Controllers
 
             var mlRequest = new ProductEvaluationRequest
             {
-                ProductId = product.Name,
+                ProductId = product.Id.ToString(),
                 Data = new ProductData
 {
     review_score = product.ReviewScore,

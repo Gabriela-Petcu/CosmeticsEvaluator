@@ -1,42 +1,38 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-
-const CATEGORIES = [
-  { icon: '💧', name: 'serumuri', count: 214 },
-  { icon: '🌸', name: 'hidratare', count: 318 },
-  { icon: '☀️', name: 'SPF', count: 97 },
-  { icon: '🌿', name: 'curățare', count: 186 },
-  { icon: '👁️', name: 'ochi', count: 74 },
-]
-
-const FEATURED_PRODUCTS = [
-  { brand: 'LA MER', name: 'Moisturizing Soft Cream', price: '$95', verdict: 'Recomandat', score: 88.2, icon: '🌊' },
-  { brand: 'THE ORDINARY', name: 'Hyaluronic Acid 2% + B5', price: '$9', verdict: 'Recomandat', score: 79.4, icon: '🔬' },
-  { brand: 'SUPERGOOP', name: 'Unseen Sunscreen SPF 40', price: '$36', verdict: 'Verifică', score: 71.0, icon: '☀️' },
-  { brand: 'SULWHASOO', name: 'First Care Activating Serum', price: '$82', verdict: 'Recomandat', score: 84.7, icon: '✨' },
-]
-
-const VERDICT_BADGE = {
-  'Recomandat': 'bg-green-100 text-green-800',
-  'Nerecomandat': 'bg-red-100 text-red-800',
-  'Verifică': 'bg-amber-100 text-amber-800',
-}
+import { getHistory } from '../api/evaluate'
 
 const SKIN_LABEL = {
   oily: 'ten gras', dry: 'ten uscat', combination: 'ten mixt',
   sensitive: 'ten sensibil', normal: 'ten normal',
 }
-
 const CONCERN_LABEL = {
   acne: 'acnee', dehydration: 'deshidratare', anti_aging: 'anti-aging',
   dark_spots: 'pete', redness: 'roșeață', dullness: 'ten tern',
 }
 
+const CATEGORIES = [
+  { icon: '💧', name: 'serumuri', filter: 'serum' },
+  { icon: '🌸', name: 'hidratare', filter: 'moisturizer' },
+  { icon: '☀️', name: 'SPF', filter: 'sunscreen' },
+  { icon: '🌿', name: 'curățare', filter: 'cleanser' },
+  { icon: '👁️', name: 'ochi', filter: 'eye' },
+]
+
 export default function HomePage() {
   const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  const [recentHistory, setRecentHistory] = useState([])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      getHistory()
+        .then(res => setRecentHistory((res.data || []).slice(0, 3)))
+        .catch(() => setRecentHistory([]))
+    }
+  }, [isAuthenticated])
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -44,64 +40,53 @@ export default function HomePage() {
     else navigate('/evaluate')
   }
 
+  const VERDICT_BADGE = {
+    'Recomandat': 'bg-green-100 text-green-800',
+    'Nerecomandat': 'bg-red-100 text-red-800',
+    default: 'bg-amber-100 text-amber-800',
+  }
+
   return (
     <div>
-
-      {/* HERO */}
-      <div className="grid grid-cols-2 border-b border-rose-border">
-        <div className="bg-cream-warm px-10 py-14 flex flex-col justify-center gap-6 border-r border-rose-border">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-px bg-rose-primary" />
-            <span className="text-xs tracking-widest text-rose-primary font-medium">EVALUARE INTELIGENTĂ</span>
-          </div>
-
-          <h1 className="font-serif text-5xl font-light leading-tight text-ink">
-            Descoperă ce<br />
-            merită<br />
-            <em className="italic text-rose-primary">pielea ta.</em>
-          </h1>
-
-          <p className="text-sm text-muted leading-relaxed max-w-sm">
-            Introduci un produs de skincare. Algoritmul analizează recenzii, popularitate
-            și compatibilitatea cu profilul tău de ten.
-          </p>
-
-          <form onSubmit={handleSearch} className="flex border border-rose-mid rounded overflow-hidden max-w-sm">
-            <input
-              className="flex-1 px-4 py-3 text-sm outline-none bg-white placeholder-soft italic"
-              placeholder="Caută un produs sau brand…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <button type="submit" className="bg-rose-primary text-white px-5 text-xs tracking-widest hover:bg-rose-deeper transition-colors">
-              analizează
-            </button>
-          </form>
-
-          <div className="flex gap-5">
-            <TrustItem icon="🗄️" text="9.000+ produse" />
-            <TrustItem icon="🧠" text="model ML antrenat" />
-            <TrustItem icon="✅" text="personalizat pentru tine" />
-          </div>
+      {/* HERO — full width */}
+      <div className="bg-cream-warm border-b border-rose-border px-16 py-20 flex flex-col items-center text-center gap-8">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-px bg-rose-primary" />
+          <span className="text-xs tracking-widest text-rose-primary font-medium">EVALUARE INTELIGENTĂ</span>
+          <div className="w-8 h-px bg-rose-primary" />
         </div>
 
-        {/* Dreapta hero */}
-        <div className="bg-rose-light flex items-end justify-center px-10 pt-10 relative overflow-hidden">
-          {/* Placeholder foto model */}
-          <div className="w-52 h-72 bg-rose-border rounded-t-lg flex flex-col items-center justify-center gap-2 opacity-60">
-            <span className="text-5xl">🧖‍♀️</span>
-            <span className="text-xs text-rose-dark tracking-widest">foto model</span>
-          </div>
+        <h1 className="font-serif text-6xl font-light leading-tight text-ink max-w-2xl">
+          Descoperă ce merită<br />
+          <em className="italic text-rose-primary">pielea ta.</em>
+        </h1>
 
-          {/* Card floating scor */}
-          <div className="absolute top-8 right-8 bg-white border border-rose-border rounded-2xl p-4 w-40 shadow-sm">
-            <div className="text-xs tracking-widest text-soft mb-1">scor final</div>
-            <div className="font-serif text-4xl font-light text-rose-primary leading-none">83.4</div>
-            <div className="text-xs text-green-700 font-medium mt-2">✓ recomandat</div>
-            <div className="text-xs text-soft mt-2 border-t border-rose-border pt-2 leading-tight">
-              Drunk Elephant<br />Marula Oil
-            </div>
-          </div>
+        <p className="text-sm text-muted leading-relaxed max-w-lg">
+          Introduci un produs de skincare. Algoritmul analizează recenzii, popularitate
+          și compatibilitatea cu profilul tău de ten — fără sponsorizări, fără compromisuri.
+        </p>
+
+        <form onSubmit={handleSearch} className="flex border border-rose-mid rounded-lg overflow-hidden w-full max-w-xl shadow-sm">
+          <input
+            className="flex-1 px-5 py-4 text-sm outline-none bg-white placeholder-soft"
+            placeholder="Caută un produs sau brand…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <button type="submit"
+            className="bg-rose-primary text-white px-8 text-xs tracking-widest hover:bg-rose-deeper transition-colors font-medium">
+            analizează
+          </button>
+        </form>
+
+        <div className="flex items-center gap-8">
+          <TrustItem icon="🗄️" text="9.000+ produse" />
+          <div className="w-px h-4 bg-rose-border" />
+          <TrustItem icon="🧠" text="model ML antrenat" />
+          <div className="w-px h-4 bg-rose-border" />
+          <TrustItem icon="🛡️" text="0 sponsorizări" />
+          <div className="w-px h-4 bg-rose-border" />
+          <TrustItem icon="✨" text="personalizat pentru tine" />
         </div>
       </div>
 
@@ -125,52 +110,77 @@ export default function HomePage() {
         <h2 className="font-serif text-2xl font-light text-center text-ink mb-7">
           Explorează după categorie
         </h2>
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-5 gap-4 max-w-3xl mx-auto">
           {CATEGORIES.map(cat => (
-            <Link to="/evaluate" key={cat.name}
-              className="card flex flex-col items-center gap-3 py-5 hover:border-rose-mid transition-colors group">
-              <div className="w-12 h-12 rounded-full bg-rose-light flex items-center justify-center text-2xl group-hover:bg-rose-border transition-colors">
-                {cat.icon}
-              </div>
-              <div className="text-xs text-gray-600 font-medium">{cat.name}</div>
-              <div className="text-xs text-soft">{cat.count} produse</div>
-            </Link>
-          ))}
+  <Link to={`/evaluate?q=${cat.filter}`} key={cat.name}
+    className="card flex flex-col items-center gap-3 py-5 hover:border-rose-mid transition-colors group cursor-pointer">
+    <div className="w-12 h-12 rounded-full bg-rose-light flex items-center justify-center text-2xl group-hover:bg-rose-border transition-colors">
+      {cat.icon}
+    </div>
+    <div className="text-xs text-gray-600 font-medium">{cat.name}</div>
+  </Link>
+))}
         </div>
       </div>
 
-      {/* PRODUSE RECOMANDATE */}
-      <div className="px-9 py-10 bg-cream-warm border-b border-rose-border">
-        <div className="flex items-baseline justify-between mb-7">
-          <h2 className="font-serif text-2xl font-light text-ink">
-            {isAuthenticated ? 'Recomandate pentru tine' : 'Produse populare'}
+      {/* EVALUĂRI RECENTE — dacă e autentificat și are istoric */}
+      {isAuthenticated && recentHistory.length > 0 && (
+        <div className="px-9 py-10 bg-cream-warm border-b border-rose-border">
+          <div className="flex items-baseline justify-between mb-6">
+            <h2 className="font-serif text-2xl font-light text-ink">Evaluările tale recente</h2>
+            <Link to="/history" className="text-xs tracking-widest text-rose-primary hover:underline">
+              vezi toate →
+            </Link>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            {recentHistory.map(entry => {
+              const prob = entry.mlProbability ? Math.round(entry.mlProbability * 100) : null
+              const badgeClass = VERDICT_BADGE[entry.finalVerdict] || VERDICT_BADGE.default
+              return (
+                <div key={entry.id} className="card flex flex-col gap-3 hover:border-rose-mid transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-rose-light flex items-center justify-center text-xl flex-shrink-0">🧴</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium tracking-widest text-soft">{entry.brand}</div>
+                      <div className="text-sm font-medium text-ink truncate">{entry.name || entry.productId}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    {prob !== null && (
+                      <div className="font-serif text-xl font-light text-rose-primary">{prob}%</div>
+                    )}
+                    <div className={`text-xs px-2 py-0.5 rounded font-medium ${badgeClass}`}>
+                      {entry.finalVerdict}
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted">
+                    {new Date(entry.createdAt).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* CTA — dacă nu e autentificat */}
+      {!isAuthenticated && (
+        <div className="px-9 py-12 bg-cream-warm border-b border-rose-border flex flex-col items-center gap-5 text-center">
+          <h2 className="font-serif text-3xl font-light text-ink">
+            Evaluări personalizate,<br />
+            <em className="italic text-rose-primary">gratuit.</em>
           </h2>
-          <Link to="/evaluate" className="text-xs tracking-widest text-rose-primary hover:underline">
-            vezi toate →
-          </Link>
+          <p className="text-sm text-muted max-w-md leading-relaxed">
+            Creează-ți contul și primești recomandări adaptate tipului tău de ten, preocupărilor principale și bugetului.
+          </p>
+          <div className="flex gap-4">
+            <Link to="/register" className="btn-primary px-8 py-3">creează cont gratuit</Link>
+            <Link to="/evaluate" className="btn-outline px-8 py-3">evaluează fără cont</Link>
+          </div>
         </div>
-        <div className="grid grid-cols-4 gap-4">
-          {FEATURED_PRODUCTS.map(p => (
-            <Link to="/evaluate" key={p.name}
-              className="card flex flex-col gap-3 hover:border-rose-mid transition-colors group">
-              <div className="h-16 bg-rose-light rounded-lg flex items-center justify-center text-3xl group-hover:bg-rose-border transition-colors">
-                {p.icon}
-              </div>
-              <div className="text-xs font-medium tracking-widest text-soft">{p.brand}</div>
-              <div className="text-sm font-medium text-ink leading-tight">{p.name}</div>
-              <div className="flex items-center justify-between mt-auto">
-                <span className="text-xs text-muted">{p.price}</span>
-                <span className={`text-xs px-2 py-0.5 rounded font-medium ${VERDICT_BADGE[p.verdict]}`}>
-                  {p.verdict}
-                </span>
-              </div>
-              <div className="text-xs text-rose-primary font-medium">scor {p.score}</div>
-            </Link>
-          ))}
-        </div>
-      </div>
+      )}
 
-      {/* BANNER — de ce SkinIQ */}
+      {/* BANNER DE CE SKINIQ */}
       <div className="grid grid-cols-2 border-t border-rose-border">
         <div className="bg-rose-border px-10 py-12 flex flex-col gap-5 justify-center">
           <div className="text-xs tracking-widest text-rose-dark font-medium">DE CE SKINIQ</div>
@@ -183,16 +193,11 @@ export default function HomePage() {
             raport calitate-preț — nu pe baza sponsorizărilor.
           </p>
           {!isAuthenticated ? (
-            <Link to="/register" className="btn-primary w-fit flex items-center gap-2">
-              creează cont gratuit →
-            </Link>
+            <Link to="/register" className="btn-primary w-fit">creează cont gratuit →</Link>
           ) : (
-            <Link to="/evaluate" className="btn-primary w-fit flex items-center gap-2">
-              evaluează un produs →
-            </Link>
+            <Link to="/evaluate" className="btn-primary w-fit">evaluează un produs →</Link>
           )}
         </div>
-
         <div className="bg-rose-mid flex items-center justify-center gap-6 px-10 py-12">
           {[
             { num: '9.2k', label: 'produse evaluate' },
@@ -206,14 +211,13 @@ export default function HomePage() {
           ))}
         </div>
       </div>
-
     </div>
   )
 }
 
 function TrustItem({ icon, text }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-soft">
+    <div className="flex items-center gap-2 text-xs text-muted">
       <span>{icon}</span>
       <span>{text}</span>
     </div>
