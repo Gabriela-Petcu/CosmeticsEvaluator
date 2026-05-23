@@ -61,9 +61,9 @@ export default function ResultPage() {
         MotivePozitive: g(raw, 'motivePozitive', 'MotivePozitive') || [],
         MotiveNegative: g(raw, 'motiveNegative', 'MotiveNegative') || [],
         TopFactoriML: g(raw, 'topFactoriML', 'TopFactoriML') || [],
-        productName: g(productInfo, 'name', 'Name') || g(raw, 'productId') || 'Produs evaluat',
-        brand: g(productInfo, 'brand', 'Brand') || '',
-        price: g(productInfo, 'price', 'Price') || null,
+        productName: g(raw, 'productName') || g(productInfo, 'name', 'Name') || g(raw, 'productId') || 'Produs evaluat',
+brand: g(raw, 'brand') || g(productInfo, 'brand', 'Brand') || '',
+price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
       }
       setResult(normalized)
     } catch {
@@ -271,26 +271,38 @@ export default function ResultPage() {
               </div>
             </div>
           </div>
-
+          
           {/* Acțiuni */}
-          <div>
-            <h2 className="section-title mb-4">Acțiuni</h2>
-            <div className="grid grid-cols-3 gap-3">
-              <button className="btn-primary flex items-center justify-center gap-2 py-3 col-span-3">
-                🛒 unde cumpăr
-              </button>
-              <button className="btn-outline flex items-center justify-center gap-2 py-2.5">
-                🔖 salvează
-              </button>
-              <button className="btn-outline flex items-center justify-center gap-2 py-2.5">
-                📤 distribuie
-              </button>
-              <Link to="/evaluate"
-                className="btn-outline flex items-center justify-center gap-2 py-2.5 text-xs text-center">
-                ← evaluează alt produs
-              </Link>
-            </div>
-          </div>
+<div>
+  <h2 className="section-title mb-4">Acțiuni</h2>
+  <div className="flex flex-col gap-3">
+    <div className="grid grid-cols-2 gap-3">
+      <a
+        href={`https://www.sephora.com/search?keyword=${encodeURIComponent(`${result.brand || ''} ${result.productName || ''}`.trim())}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-primary flex items-center justify-center gap-2 py-3 text-xs">
+        🛍️ cumpără pe Sephora
+      </a>
+      <a
+        href={`https://www.google.com/search?q=${encodeURIComponent(`buy ${result.brand || ''} ${result.productName || ''}`)}&tbm=shop`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-outline flex items-center justify-center gap-2 py-3 text-xs">
+        🔍 Google Shopping
+      </a>
+    </div>
+    <div className="grid grid-cols-2 gap-3">
+      <button className="btn-outline flex items-center justify-center gap-2 py-2.5 text-xs">
+        🔖 salvează
+      </button>
+      <Link to="/evaluate"
+        className="btn-outline flex items-center justify-center gap-2 py-2.5 text-xs text-center">
+        ← evaluează alt produs
+      </Link>
+    </div>
+  </div>
+</div>
 
           {/* Despre scor */}
           <div className="card bg-cream-warm">
