@@ -171,6 +171,7 @@ public async Task<IActionResult> GoogleLogin([FromBody] string accessToken)
             return Ok(new
             {
                 user.Email,
+                user.Role, 
                 user.SkinType,
                 user.MainConcern,
                 user.BudgetLevel,

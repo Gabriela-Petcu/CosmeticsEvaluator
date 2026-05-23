@@ -169,7 +169,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 gap-5">
                 <InfoField label="EMAIL" value={profile?.email} />
                 <InfoField label="CONT CREAT" value={new Date(profile?.createdAt || Date.now()).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' })} />
-                <InfoField label="ROL" value={profile?.role || 'utilizator'} />
+                <InfoField label="ROL" value={profile?.role === 'Admin' ? 'administrator' : 'utilizator'} />
               </div>
             </Section>
 
@@ -313,19 +313,32 @@ export default function ProfilePage() {
 
         {/* TAB: SECURITATE */}
         {activeTab === 'securitate' && (
-          <Section title="Securitate">
-            <div className="flex flex-col gap-4">
-              <div className="p-4 bg-rose-light border border-rose-border rounded-xl text-sm text-rose-dark">
-                <div className="font-medium mb-1">🔐 Parolă</div>
-                <div className="text-xs text-muted">Funcționalitatea de schimbare a parolei și recuperare prin email va fi disponibilă în curând.</div>
-              </div>
-              <div className="p-4 bg-cream-warm border border-rose-border rounded-xl text-sm">
-                <div className="font-medium mb-1 text-ink">📧 Email înregistrat</div>
-                <div className="text-xs text-muted">{user?.email}</div>
-              </div>
-            </div>
-          </Section>
+  <Section title="Securitate">
+    <div className="flex flex-col gap-4">
+      <div className="p-4 bg-rose-light border border-rose-border rounded-xl text-sm text-rose-dark">
+        <div className="font-medium mb-2">🔐 Resetare parolă</div>
+        <div className="text-xs text-muted mb-3">
+          Poți reseta parola prin email. Vei primi un link valabil 1 oră.
+        </div>
+        {profile?.passwordHash === 'EXTERNAL_AUTH_GOOGLE' ? (
+          <div className="text-xs text-muted italic">
+            Contul tău folosește autentificarea Google — parola se gestionează din contul Google.
+          </div>
+        ) : (
+          <button
+            onClick={() => window.location.href = '/forgot-password'}
+            className="btn-outline text-xs py-2 px-4">
+            trimite link de resetare
+          </button>
         )}
+      </div>
+      <div className="p-4 bg-cream-warm border border-rose-border rounded-xl text-sm">
+        <div className="font-medium mb-1 text-ink">📧 Email înregistrat</div>
+        <div className="text-xs text-muted">{user?.email}</div>
+      </div>
+    </div>
+  </Section>
+)}
 
       </div>
     </div>

@@ -38,6 +38,11 @@ export default function Navbar() {
               className={isActive('/profile') ? 'text-rose-primary font-medium' : 'hover:text-rose-primary transition-colors'}>
               profilul meu
             </Link>
+            {user?.role === 'Admin' && (
+  <Link to="/admin" className={isActive('/admin') ? 'text-rose-primary font-medium' : 'hover:text-rose-primary transition-colors'}>
+    admin
+  </Link>
+)}
           </>
         )}
       </div>

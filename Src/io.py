@@ -6,13 +6,8 @@ TEXT_COLUMNS_TO_CLEAN = ["brand", "name"]
 
 
 def _fix_mojibake_text(value: object) -> object:
-    """
-    Încearcă să repare texte de tip mojibake, de exemplu:
-    'Cr√®me Ancienne¬Æ' -> 'Crème Ancienne®'
-    """
     if pd.isna(value):
         return value
-
     if not isinstance(value, str):
         return value
 
@@ -20,7 +15,34 @@ def _fix_mojibake_text(value: object) -> object:
     if not text:
         return text
 
-    suspicious_markers = ["√", "¬", "Ã", "Â", "Ð", "Ñ"]
+    replacements = [
+        ("\u00ac\u00c6", "\u00ae"),
+        (",\u00d1\u00a2", "\u00ae"),
+        ("\u201a\u00d1\u00a2", "\u2122"),
+        ("\u201a\u00c4\u00ec", "\u2014"),
+        ("\u201a\u00c4\u00f4", "\u2019"),
+        ("\u201a\u00c4\u00fa", "\u201c"),
+        ("\u201a\u00c4\u00f9", "\u201d"),
+        ("\u221a\u00ae", "\u00e8"),
+        ("\u221a\u00a9", "\u00e9"),
+        ("\u221a\u00e0", "\u00e0"),
+        ("\u221a\u00fc", "\u00df"),
+        ("R\u2248\u00e7", "R\u00e9"),
+        ("\u2248\u00e7", "\u00e9"),
+        ("\u00d1\u00a2", "\u2122"),
+        ("\u00c3\u00a9", "\u00e9"),
+        ("\u00c3\u00a8", "\u00e8"),
+        ("\u00c3\u00a0", "\u00e0"),
+        ("\u00e2\u20ac\u2122", "\u2019"),
+        ("\u00e2\u20ac\u201d", "\u2014"),
+        ("\u00e2\u20ac\u0153", "\u201c"),
+        ("\u00e2\u20ac", "\u201d"),
+    ]
+
+    for bad, good in replacements:
+        text = text.replace(bad, good)
+
+    suspicious_markers = ["\u221a", "\u00ac", "\u00c3", "\u00c2", "\u00d0", "\u00d1", "\u201a", "\u2248"]
     if not any(marker in text for marker in suspicious_markers):
         return text
 
@@ -33,7 +55,8 @@ def _fix_mojibake_text(value: object) -> object:
     for source_encoding, target_encoding in attempts:
         try:
             fixed = text.encode(source_encoding).decode(target_encoding)
-            return fixed
+            if not any(marker in fixed for marker in suspicious_markers):
+                return fixed
         except (UnicodeEncodeError, UnicodeDecodeError):
             continue
 

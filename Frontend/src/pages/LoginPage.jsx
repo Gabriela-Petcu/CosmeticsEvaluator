@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault()
   setError('')
   setLoading(true)
@@ -23,25 +23,24 @@ export default function LoginPage() {
     const res = await loginApi(email, password)
     const { token, email: userEmail, role } = res.data
 
-    // Salvăm token-ul înainte de getProfile
     localStorage.setItem('skiniq_token', token)
 
     let skinType = 'normal'
     let mainConcern = 'anti_aging'
     let budgetLevel = 'medium'
+    let userRole = role
 
     try {
       const profileRes = await getProfile()
       skinType = profileRes.data.skinType || skinType
       mainConcern = profileRes.data.mainConcern || mainConcern
       budgetLevel = profileRes.data.budgetLevel || budgetLevel
-    } catch {
-      // Profilul nu e critic — continuăm cu valorile default
-    }
+      userRole = profileRes.data.role || userRole
+    } catch {}
 
     login(token, {
       email: userEmail,
-      role,
+      role: userRole,
       skinType,
       mainConcern,
       budgetLevel,
@@ -57,6 +56,7 @@ export default function LoginPage() {
     setLoading(false)
   }
 }
+
 const handleGoogleLogin = useGoogleLogin({
   onSuccess: async (tokenResponse) => {
     setLoading(true)
