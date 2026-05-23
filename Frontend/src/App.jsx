@@ -7,6 +7,8 @@ import ProfilePage from './pages/ProfilePage'
 import EvaluatePage from './pages/EvaluatePage'
 import ResultPage from './pages/ResultPage'
 import HistoryPage from './pages/HistoryPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
         <Route path="/evaluate" element={<EvaluatePage />} />
         <Route path="/result/:id" element={<ResultPage />} />
         <Route path="/history" element={<HistoryPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

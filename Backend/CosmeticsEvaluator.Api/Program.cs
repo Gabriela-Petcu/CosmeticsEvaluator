@@ -19,6 +19,7 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddHttpClient<IMlService, MlService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddSwaggerGen(c =>
 {

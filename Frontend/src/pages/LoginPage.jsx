@@ -161,9 +161,9 @@ export default function LoginPage() {
               />
               ține-mă conectată
             </label>
-            <span className="text-xs text-rose-primary cursor-pointer hover:underline">
-              ai uitat parola?
-            </span>
+            <Link to="/forgot-password" className="text-xs text-rose-primary hover:underline">
+  ai uitat parola?
+</Link>
           </div>
 
           <button

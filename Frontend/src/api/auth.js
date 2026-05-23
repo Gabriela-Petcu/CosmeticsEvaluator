@@ -33,3 +33,9 @@ export const getProfile = () =>
 
 export const updateProfile = (skinType, mainConcern, budgetLevel) =>
   client.put('/auth/profile', { skinType, mainConcern, budgetLevel })
+
+export const forgotPassword = (email) =>
+  client.post('/auth/forgot-password', { email })
+
+export const resetPassword = (token, email, newPassword) =>
+  client.post('/auth/reset-password', { token, email, newPassword })
