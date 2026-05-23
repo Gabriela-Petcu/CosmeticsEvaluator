@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { register as registerApi } from '../api/auth'
+import { register as registerApi, googleLogin, getProfile, updateProfile } from '../api/auth'
+import { useGoogleLogin } from '@react-oauth/google'
 
 const SKIN_TYPES = [
   { value: 'oily', label: 'gras', icon: '💧' },
@@ -89,6 +90,31 @@ export default function RegisterPage() {
 }
 
   const strength = passwordStrength()
+const handleGoogleRegister = useGoogleLogin({
+  onSuccess: async (tokenResponse) => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await googleLogin(tokenResponse.access_token)
+      const { token, email: userEmail, role } = res.data
+
+      localStorage.setItem('skiniq_token', token)
+
+      // Setăm profilul ales în formular
+      try {
+        await updateProfile(skinType, mainConcern, budgetLevel)
+      } catch {}
+
+      login(token, { email: userEmail, role, skinType, mainConcern, budgetLevel })
+      navigate('/')
+    } catch (err) {
+      setError('Înregistrarea cu Google a eșuat. Încearcă din nou.')
+    } finally {
+      setLoading(false)
+    }
+  },
+  onError: () => setError('Autentificarea cu Google a fost anulată.')
+})
 
   return (
     <div className="grid grid-cols-2 min-h-[calc(100vh-65px)]">
@@ -135,10 +161,13 @@ export default function RegisterPage() {
         </div>
 
         {/* GOOGLE */}
-        <button className="flex items-center justify-center gap-3 w-full py-3 border border-gray-200 rounded-lg bg-white text-sm font-medium hover:border-rose-mid transition-colors">
-          <GoogleIcon />
-          Înregistrează-te cu Google
-        </button>
+        <button
+  onClick={() => handleGoogleRegister()}
+  disabled={loading}
+  className="flex items-center justify-center gap-3 w-full py-3 border border-gray-200 rounded-lg bg-white text-sm font-medium hover:border-rose-mid transition-colors disabled:opacity-60">
+  <GoogleIcon />
+  Înregistrează-te cu Google
+</button>
 
         <Divider />
 

@@ -23,8 +23,8 @@ export const register = async (email, password, skinType, mainConcern, budgetLev
 export const login = (email, password) =>
   client.post('/auth/login', { email, password })
 
-export const googleLogin = (idToken) =>
-  client.post('/auth/google-login', JSON.stringify(idToken), {
+export const googleLogin = (accessToken) =>
+  client.post('/auth/google-login', JSON.stringify(accessToken), {
     headers: { 'Content-Type': 'application/json' }
   })
 

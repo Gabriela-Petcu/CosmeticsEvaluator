@@ -188,11 +188,6 @@ export default function EvaluatePage() {
                 ${tab === 'catalog' ? 'border-rose-primary text-rose-primary font-medium' : 'border-transparent text-muted hover:text-ink'}`}>
               din catalog
             </button>
-            <button onClick={() => setTab('manual')}
-              className={`text-xs tracking-wide px-4 py-2.5 border-b-2 transition-colors cursor-pointer
-                ${tab === 'manual' ? 'border-rose-primary text-rose-primary font-medium' : 'border-transparent text-muted hover:text-ink'}`}>
-              introduci manual
-            </button>
           </div>
 
           {/* CATALOG */}

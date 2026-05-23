@@ -49,49 +49,55 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
 
         [HttpPost("google-login")]
-        public async Task<IActionResult> GoogleLogin([FromBody] string idToken)
+public async Task<IActionResult> GoogleLogin([FromBody] string accessToken)
+{
+    try
+    {
+        // Validăm access_token cu Google UserInfo endpoint
+        using var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await httpClient.GetAsync("https://www.googleapis.com/oauth2/v3/userinfo");
+
+        if (!response.IsSuccessStatusCode)
+            return BadRequest("Token Google invalid.");
+
+        var json = await response.Content.ReadAsStringAsync();
+        var userInfo = System.Text.Json.JsonSerializer.Deserialize<GoogleUserInfo>(json);
+
+        if (userInfo == null || string.IsNullOrEmpty(userInfo.Email))
+            return BadRequest("Nu s-au putut obține datele utilizatorului Google.");
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userInfo.Email);
+
+        if (user == null)
         {
-            try
+            user = new User
             {
-                var settings = new GoogleJsonWebSignature.ValidationSettings()
-                {
-                    Audience = new List<string>() { _config["Google:ClientId"]! }
-                };
-
-                var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == payload.Email);
-
-                if (user == null)
-                {
-                    user = new User
-                    {
-                        Email = payload.Email,
-                        Role = "User",
-                        PasswordHash = "EXTERNAL_AUTH_GOOGLE",
-                        CreatedAt = DateTime.Now
-                    };
-                    _context.Users.Add(user);
-                    await _context.SaveChangesAsync();
-                }
-
-                var token = GenerateJwtToken(user);
-
-                return Ok(new {
-                    Token = token,
-                    Email = user.Email,
-                    Role = user.Role,
-                    Message = "Logare cu Google reușită!"
-                });
-            }
-            catch (InvalidJwtException)
-            {
-                return BadRequest("Token Google invalid sau expirat.");
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "Eroare internă la autentificarea Google.");
-            }
+                Email = userInfo.Email,
+                Role = "User",
+                PasswordHash = "EXTERNAL_AUTH_GOOGLE",
+                CreatedAt = DateTime.Now
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
         }
+
+        var token = GenerateJwtToken(user);
+
+        return Ok(new {
+            Token = token,
+            Email = user.Email,
+            Role = user.Role,
+            Message = "Logare cu Google reușită!"
+        });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, $"Eroare internă: {ex.Message}");
+    }
+}
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -244,4 +250,16 @@ namespace CosmeticsEvaluator.Api.Controllers
             return tokenHandler.WriteToken(token);
         }
     }
+
+    public class GoogleUserInfo
+{
+    [System.Text.Json.Serialization.JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("picture")]
+    public string Picture { get; set; } = string.Empty;
+}
 }

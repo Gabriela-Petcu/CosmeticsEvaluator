@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { login as loginApi, googleLogin } from '../api/auth'
-import { getProfile } from '../api/auth'
+import { login as loginApi, googleLogin, getProfile } from '../api/auth'
+import { useGoogleLogin } from '@react-oauth/google'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -57,6 +57,44 @@ export default function LoginPage() {
     setLoading(false)
   }
 }
+const handleGoogleLogin = useGoogleLogin({
+  onSuccess: async (tokenResponse) => {
+    setLoading(true)
+    setError('')
+    try {
+      // Obținem datele userului de la Google
+      const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+      }).then(r => r.json())
+
+      // Trimitem id_token la backend
+      const res = await googleLogin(tokenResponse.access_token)
+      const { token, email: userEmail, role } = res.data
+
+      localStorage.setItem('skiniq_token', token)
+
+      let skinType = 'normal'
+      let mainConcern = 'anti_aging'
+      let budgetLevel = 'medium'
+
+      try {
+        const profileRes = await getProfile()
+        skinType = profileRes.data.skinType || skinType
+        mainConcern = profileRes.data.mainConcern || mainConcern
+        budgetLevel = profileRes.data.budgetLevel || budgetLevel
+      } catch {}
+
+      login(token, { email: userEmail, role, skinType, mainConcern, budgetLevel })
+      navigate('/')
+    } catch (err) {
+      console.error('Google login error:', err)
+      setError('Autentificarea cu Google a eșuat. Încearcă din nou.')
+    } finally {
+      setLoading(false)
+    }
+  },
+  onError: () => setError('Autentificarea cu Google a fost anulată.')
+})
 
   return (
     <div className="grid grid-cols-2 min-h-[calc(100vh-65px)]">
@@ -103,10 +141,13 @@ export default function LoginPage() {
         </div>
 
         {/* GOOGLE */}
-        <button className="flex items-center justify-center gap-3 w-full py-3 border border-gray-200 rounded-lg bg-white text-sm font-medium hover:border-rose-mid transition-colors">
-          <GoogleIcon />
-          Continuă cu Google
-        </button>
+        <button
+  onClick={() => handleGoogleLogin()}
+  disabled={loading}
+  className="flex items-center justify-center gap-3 w-full py-3 border border-gray-200 rounded-lg bg-white text-sm font-medium hover:border-rose-mid transition-colors disabled:opacity-60">
+  <GoogleIcon />
+  Continuă cu Google
+</button>
 
         <Divider />
 
