@@ -272,38 +272,23 @@ price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
             </div>
           </div>
           
-          {/* Acțiuni */}
+{/* Acțiuni */}
 <div>
   <h2 className="section-title mb-4">Acțiuni</h2>
   <div className="flex flex-col gap-3">
-    <div className="grid grid-cols-2 gap-3">
-      <a
-        href={`https://www.sephora.com/search?keyword=${encodeURIComponent(`${result.brand || ''} ${result.productName || ''}`.trim())}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="btn-primary flex items-center justify-center gap-2 py-3 text-xs">
-        🛍️ cumpără pe Sephora
-      </a>
-      <a
-        href={`https://www.google.com/search?q=${encodeURIComponent(`buy ${result.brand || ''} ${result.productName || ''}`)}&tbm=shop`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="btn-outline flex items-center justify-center gap-2 py-3 text-xs">
-        🔍 Google Shopping
-      </a>
-    </div>
-    <div className="grid grid-cols-2 gap-3">
-      <button className="btn-outline flex items-center justify-center gap-2 py-2.5 text-xs">
-        🔖 salvează
-      </button>
-      <Link to="/evaluate"
-        className="btn-outline flex items-center justify-center gap-2 py-2.5 text-xs text-center">
-        ← evaluează alt produs
-      </Link>
-    </div>
+    <a
+      href={`https://www.google.com/search?q=${encodeURIComponent(`buy ${result.brand || ''} ${result.productName || ''}`)}&tbm=shop`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="btn-primary flex items-center justify-center gap-2 py-3 text-xs">
+      🔍 unde cumpăr — Google Shopping
+    </a>
+    <Link to="/evaluate"
+      className="btn-outline flex items-center justify-center gap-2 py-2.5 text-xs text-center">
+      ← evaluează alt produs
+    </Link>
   </div>
 </div>
-
           {/* Despre scor */}
           <div className="card bg-cream-warm">
             <div className="text-xs font-medium tracking-widest text-soft mb-3">DESPRE ACEST SCOR</div>
