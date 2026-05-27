@@ -62,7 +62,7 @@ namespace CosmeticsEvaluator.Api.Services
             };
 
             using var client = new SmtpClient();
-            await client.ConnectAsync(smtpHost, smtpPort, SecureSocketOptions.StartTls);
+            await client.ConnectAsync(smtpHost, 2525, SecureSocketOptions.StartTls);
             await client.AuthenticateAsync(senderEmail, appPassword);
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
