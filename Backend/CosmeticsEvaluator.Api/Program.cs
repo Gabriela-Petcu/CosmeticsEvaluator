@@ -69,7 +69,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(p => p
-        .AllowAnyOrigin()
+        .WithOrigins(
+            "https://skiniq-gamma.vercel.app",
+            "https://skiniq-9ornfc8h0-gabriela-petcus-projects.vercel.app",
+            "http://localhost:5173"
+        )
         .AllowAnyMethod()
         .AllowAnyHeader());
 });
