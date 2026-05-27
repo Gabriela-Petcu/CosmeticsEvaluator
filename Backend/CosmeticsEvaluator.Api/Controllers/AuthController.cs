@@ -202,7 +202,15 @@ public async Task<IActionResult> GoogleLogin([FromBody] string accessToken)
 
             try
 {
+    try
+{
     await _emailService.SendPasswordResetEmailAsync(request.Email, resetLink);
+    Console.WriteLine("EMAIL TRIMIS CU SUCCES!");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"EROARE EMAIL: {ex.Message}");
+}
     Console.WriteLine($"Email trimis cu succes către {request.Email}");
 }
 catch (Exception ex)
