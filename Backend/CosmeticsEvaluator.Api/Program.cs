@@ -109,16 +109,21 @@ void SeedDatabase(AppDbContext context, string contentRootPath)
 {
     if (context.ProductCatalog.Any()) return;
 
-    var path = Path.GetFullPath(
-        Path.Combine(contentRootPath, "..", "..", "Data", "Raw", "skincare_df.csv")
-    );
-    Console.WriteLine($"Cale CSV calculată: {path}");
-
-    if (!File.Exists(path))
+    var possiblePaths = new[]
     {
-        Console.WriteLine($"CSV nu a fost găsit la calea: {path}");
+        Path.Combine(contentRootPath, "Data", "skincare_df.csv"),
+        Path.Combine(contentRootPath, "..", "..", "Data", "Raw", "skincare_df.csv"),
+        "/app/Data/skincare_df.csv"
+    };
+
+    var path = possiblePaths.FirstOrDefault(File.Exists);
+    if (path == null)
+    {
+        Console.WriteLine("CSV nu a fost găsit în nicio cale.");
         return;
     }
+
+    Console.WriteLine($"Cale CSV găsită: {path}");
 
     try
     {
