@@ -59,7 +59,8 @@ wandb/
 lightning_logs/
 ray_results/
 
-Data/Raw/
+Data/Raw/*.joblib
+Data/Raw/*.pkl
 Backend/CosmeticsEvaluator.Api/appsettings.Development.json
 Backend/CosmeticsEvaluator.Api/cosmetics.db
 Backend/CosmeticsEvaluator.Api/appsettings.Development.json
