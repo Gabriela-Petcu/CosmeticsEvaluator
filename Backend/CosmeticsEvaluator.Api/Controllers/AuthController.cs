@@ -200,7 +200,17 @@ public async Task<IActionResult> GoogleLogin([FromBody] string accessToken)
             var baseUrl = _config["AppBaseUrl"] ?? "http://localhost:5173";
             var resetLink = $"{baseUrl}/reset-password?token={token}&email={Uri.EscapeDataString(request.Email)}";
 
-            await _emailService.SendPasswordResetEmailAsync(request.Email, resetLink);
+            try
+{
+    await _emailService.SendPasswordResetEmailAsync(request.Email, resetLink);
+    Console.WriteLine($"Email trimis cu succes către {request.Email}");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"EROARE trimitere email: {ex.Message}");
+    Console.WriteLine($"Stack trace: {ex.StackTrace}");
+    // Nu returna eroare utilizatorului, dar logăm
+}
 
             return Ok(new { message = "Dacă emailul există, vei primi un link de resetare." });
         }
