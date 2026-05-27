@@ -25,11 +25,13 @@ namespace CosmeticsEvaluator.Api.Services
             var senderName = _config["Email:SenderName"]!;
             var appPassword = _config["Email:AppPassword"]!;
 
-            var client = new SmtpClient(smtpHost, 465)
-            {
-                EnableSsl = true,
-                Credentials = new NetworkCredential(senderEmail, appPassword)
-            };
+            var client = new SmtpClient(smtpHost, 587)
+{
+    EnableSsl = true,
+    Credentials = new NetworkCredential(senderEmail, appPassword),
+    DeliveryMethod = SmtpDeliveryMethod.Network,
+    UseDefaultCredentials = false
+};
 
             var mailMessage = new MailMessage
             {
