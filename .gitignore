@@ -10,10 +10,12 @@ venv/
 ENV/
 
 # ML artifacts
-Models/
+/Models/
+Src/models/
 *.joblib
 *.pkl
 *.pickle
+
 
 # Generated data
 Data/Processed/
