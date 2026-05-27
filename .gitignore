@@ -61,3 +61,8 @@ Data/Raw/
 Backend/CosmeticsEvaluator.Api/appsettings.Development.json
 Backend/CosmeticsEvaluator.Api/cosmetics.db
 Backend/CosmeticsEvaluator.Api/appsettings.Development.json
+
+
+# Node
+Frontend/node_modules/
+Frontend/dist/
