@@ -7,7 +7,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 
 namespace CosmeticsEvaluator.Api.Controllers
@@ -49,55 +48,54 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
 
         [HttpPost("google-login")]
-public async Task<IActionResult> GoogleLogin([FromBody] string accessToken)
-{
-    try
-    {
-        // Validăm access_token cu Google UserInfo endpoint
-        using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-
-        var response = await httpClient.GetAsync("https://www.googleapis.com/oauth2/v3/userinfo");
-
-        if (!response.IsSuccessStatusCode)
-            return BadRequest("Token Google invalid.");
-
-        var json = await response.Content.ReadAsStringAsync();
-        var userInfo = System.Text.Json.JsonSerializer.Deserialize<GoogleUserInfo>(json);
-
-        if (userInfo == null || string.IsNullOrEmpty(userInfo.Email))
-            return BadRequest("Nu s-au putut obține datele utilizatorului Google.");
-
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userInfo.Email);
-
-        if (user == null)
+        public async Task<IActionResult> GoogleLogin([FromBody] string accessToken)
         {
-            user = new User
+            try
             {
-                Email = userInfo.Email,
-                Role = "User",
-                PasswordHash = "EXTERNAL_AUTH_GOOGLE",
-                CreatedAt = DateTime.Now
-            };
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+                using var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+                var response = await httpClient.GetAsync("https://www.googleapis.com/oauth2/v3/userinfo");
+
+                if (!response.IsSuccessStatusCode)
+                    return BadRequest("Token Google invalid.");
+
+                var json = await response.Content.ReadAsStringAsync();
+                var userInfo = System.Text.Json.JsonSerializer.Deserialize<GoogleUserInfo>(json);
+
+                if (userInfo == null || string.IsNullOrEmpty(userInfo.Email))
+                    return BadRequest("Nu s-au putut obține datele utilizatorului Google.");
+
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userInfo.Email);
+
+                if (user == null)
+                {
+                    user = new User
+                    {
+                        Email = userInfo.Email,
+                        Role = "User",
+                        PasswordHash = "EXTERNAL_AUTH_GOOGLE",
+                        CreatedAt = DateTime.Now
+                    };
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync();
+                }
+
+                var token = GenerateJwtToken(user);
+
+                return Ok(new {
+                    Token = token,
+                    Email = user.Email,
+                    Role = user.Role,
+                    Message = "Logare cu Google reușită!"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Eroare internă: {ex.Message}");
+            }
         }
-
-        var token = GenerateJwtToken(user);
-
-        return Ok(new {
-            Token = token,
-            Email = user.Email,
-            Role = user.Role,
-            Message = "Logare cu Google reușită!"
-        });
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, $"Eroare internă: {ex.Message}");
-    }
-}
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -171,7 +169,7 @@ public async Task<IActionResult> GoogleLogin([FromBody] string accessToken)
             return Ok(new
             {
                 user.Email,
-                user.Role, 
+                user.Role,
                 user.SkinType,
                 user.MainConcern,
                 user.BudgetLevel,
@@ -201,24 +199,14 @@ public async Task<IActionResult> GoogleLogin([FromBody] string accessToken)
             var resetLink = $"{baseUrl}/reset-password?token={token}&email={Uri.EscapeDataString(request.Email)}";
 
             try
-{
-    try
-{
-    await _emailService.SendPasswordResetEmailAsync(request.Email, resetLink);
-    Console.WriteLine("EMAIL TRIMIS CU SUCCES!");
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"EROARE EMAIL: {ex.Message}");
-}
-    Console.WriteLine($"Email trimis cu succes către {request.Email}");
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"EROARE trimitere email: {ex.Message}");
-    Console.WriteLine($"Stack trace: {ex.StackTrace}");
-    // Nu returna eroare utilizatorului, dar logăm
-}
+            {
+                await _emailService.SendPasswordResetEmailAsync(request.Email, resetLink);
+                Console.WriteLine($"Email trimis cu succes către {request.Email}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EROARE EMAIL: {ex.Message}");
+            }
 
             return Ok(new { message = "Dacă emailul există, vei primi un link de resetare." });
         }
@@ -246,6 +234,17 @@ catch (Exception ex)
             return Ok(new { message = "Parola a fost resetată cu succes!" });
         }
 
+        // Endpoint temporar - sterge dupa folosire!
+        [HttpPost("make-admin")]
+        public async Task<IActionResult> MakeAdmin([FromBody] string email)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null) return NotFound();
+            user.Role = "Admin";
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"{email} este acum Admin!" });
+        }
+
         private string GenerateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -271,14 +270,14 @@ catch (Exception ex)
     }
 
     public class GoogleUserInfo
-{
-    [System.Text.Json.Serialization.JsonPropertyName("email")]
-    public string Email { get; set; } = string.Empty;
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+        public string Email { get; set; } = string.Empty;
 
-    [System.Text.Json.Serialization.JsonPropertyName("name")]
-    public string Name { get; set; } = string.Empty;
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
 
-    [System.Text.Json.Serialization.JsonPropertyName("picture")]
-    public string Picture { get; set; } = string.Empty;
-}
+        [System.Text.Json.Serialization.JsonPropertyName("picture")]
+        public string Picture { get; set; } = string.Empty;
+    }
 }
