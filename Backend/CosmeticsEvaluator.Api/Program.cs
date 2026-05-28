@@ -11,7 +11,7 @@ using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. SERVICII
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -21,9 +21,10 @@ builder.Services.AddControllers()
 builder.Services.AddHttpClient<IMlService, MlService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Cosmetics AI API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "SkinIQ API", Version = "v1" });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -45,10 +46,11 @@ builder.Services.AddSwaggerGen(c =>
                     Id = "Bearer"
                 }
             },
-            new string[] {}
+            Array.Empty<string>()
         }
     });
 });
+
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -66,6 +68,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(p => p
@@ -76,21 +79,21 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=cosmetics.db"));
 
 var app = builder.Build();
 
-// 2. SEEDING
+
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<AppDbContext>();
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     context.Database.Migrate();
     SeedDatabase(context, builder.Environment.ContentRootPath);
 }
 
-// 3. MIDDLEWARE
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -104,7 +107,12 @@ app.UseAuthorization();
 app.MapControllers();
 app.Run();
 
-// 4. SEEDING
+
+/// <summary>
+/// Importa produsele din CSV in baza de date la prima pornire.
+/// Cauta fisierul in mai multe locatii pentru compatibilitate local/productie.
+/// Nu face nimic daca datele sunt deja in catalog.
+/// </summary>
 void SeedDatabase(AppDbContext context, string contentRootPath)
 {
     if (context.ProductCatalog.Any()) return;

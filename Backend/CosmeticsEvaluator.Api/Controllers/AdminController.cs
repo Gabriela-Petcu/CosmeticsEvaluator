@@ -7,6 +7,10 @@ using System.Security.Claims;
 
 namespace CosmeticsEvaluator.Api.Controllers
 {
+    /// <summary>
+    /// Controller pt operatiunile administrative.
+    /// Accesibil doar utilizatorilor cu rolul Admin.
+    /// </summary>
     [Authorize(Roles = "Admin")]
     [ApiController]
     [Route("[controller]")]
@@ -19,8 +23,11 @@ namespace CosmeticsEvaluator.Api.Controllers
             _context = context;
         }
 
-        // ── STATISTICI GLOBALE ──────────────────────────────────────────
 
+        /// <summary>
+        /// Returneaza statistici globale: nr utilizatori, evaluari, produse,
+        /// distributia verdictelor, evaluarile recente si produsele cel mai evaluate.
+        /// </summary>
         [HttpGet("stats")]
         public async Task<IActionResult> GetStats()
         {
@@ -40,7 +47,8 @@ namespace CosmeticsEvaluator.Api.Controllers
 
             var topProducts = await _context.EvaluationHistory
                 .GroupBy(e => new { e.Name, e.Brand })
-                .Select(g => new {
+                .Select(g => new
+                {
                     g.Key.Name,
                     g.Key.Brand,
                     Count = g.Count(),
@@ -61,8 +69,10 @@ namespace CosmeticsEvaluator.Api.Controllers
             });
         }
 
-        // ── UTILIZATORI ─────────────────────────────────────────────────
 
+        /// <summary>
+        /// Returneaza lista tuturor utilizatorilor cu informatii despre profil si nr de evaluari.
+        /// </summary>
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers()
         {
@@ -84,6 +94,9 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(users);
         }
 
+        /// <summary>
+        /// Actualizeaza rolul unui utilizator. Un admin nu isi poate schimba propriul rol.
+        /// </summary>
         [HttpPut("users/{id}/role")]
         public async Task<IActionResult> UpdateUserRole(int id, [FromBody] UpdateRoleRequest request)
         {
@@ -92,9 +105,9 @@ namespace CosmeticsEvaluator.Api.Controllers
                 return BadRequest("Rol invalid. Valori permise: User, Admin");
 
             var user = await _context.Users.FindAsync(id);
-            if (user == null) return NotFound("Utilizatorul nu a fost găsit.");
+            if (user == null)
+                return NotFound("Utilizatorul nu a fost găsit.");
 
-            // Protecție — nu poți să îți schimbi propriul rol
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             if (user.Id == currentUserId)
                 return BadRequest("Nu îți poți schimba propriul rol.");
@@ -105,6 +118,10 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(new { message = $"Rolul utilizatorului {user.Email} a fost schimbat în {request.Role}." });
         }
 
+        /// <summary>
+        /// Sterge un utilizator si toate evaluarile asociate acestuia.
+        /// Un admin nu isi poate sterge propriul cont.
+        /// </summary>
         [HttpDelete("users/{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
@@ -113,9 +130,9 @@ namespace CosmeticsEvaluator.Api.Controllers
                 return BadRequest("Nu îți poți șterge propriul cont din panoul de admin.");
 
             var user = await _context.Users.FindAsync(id);
-            if (user == null) return NotFound("Utilizatorul nu a fost găsit.");
+            if (user == null)
+                return NotFound("Utilizatorul nu a fost găsit.");
 
-            // Ștergem și evaluările asociate
             var evaluations = _context.EvaluationHistory.Where(e => e.UserId == id);
             _context.EvaluationHistory.RemoveRange(evaluations);
             _context.Users.Remove(user);
@@ -124,10 +141,15 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(new { message = $"Utilizatorul {user.Email} a fost șters." });
         }
 
-        // ── CATALOG PRODUSE ─────────────────────────────────────────────
 
+        /// <summary>
+        /// Returneaza produsele din catalog cu suport pentru paginare si cautare dupa nume sau brand.
+        /// </summary>
         [HttpGet("products")]
-        public async Task<IActionResult> GetProducts([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
+        public async Task<IActionResult> GetProducts(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
         {
             var query = _context.ProductCatalog.AsQueryable();
 
@@ -144,6 +166,9 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(new { Total = total, Page = page, PageSize = pageSize, Products = products });
         }
 
+        /// <summary>
+        /// Adauga un produs nou in catalog.
+        /// </summary>
         [HttpPost("products")]
         public async Task<IActionResult> AddProduct([FromBody] ProductCatalog product)
         {
@@ -152,11 +177,15 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(new { message = "Produs adăugat cu succes!", id = product.Id });
         }
 
+        /// <summary>
+        /// Actualizeaza informatiile de baza ale unui produs existent.
+        /// </summary>
         [HttpPut("products/{id}")]
         public async Task<IActionResult> UpdateProduct(int id, [FromBody] ProductCatalog updated)
         {
             var product = await _context.ProductCatalog.FindAsync(id);
-            if (product == null) return NotFound("Produsul nu a fost găsit.");
+            if (product == null)
+                return NotFound("Produsul nu a fost găsit.");
 
             product.Brand = updated.Brand;
             product.Name = updated.Name;
@@ -170,11 +199,15 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(new { message = "Produs actualizat cu succes!" });
         }
 
+        /// <summary>
+        /// Sterge un produs din catalog.
+        /// </summary>
         [HttpDelete("products/{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             var product = await _context.ProductCatalog.FindAsync(id);
-            if (product == null) return NotFound("Produsul nu a fost găsit.");
+            if (product == null)
+                return NotFound("Produsul nu a fost găsit.");
 
             _context.ProductCatalog.Remove(product);
             await _context.SaveChangesAsync();
@@ -182,6 +215,9 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
     }
 
+    /// <summary>
+    /// Model pentru cererea de actualizare a rolului unui utilizator.
+    /// </summary>
     public class UpdateRoleRequest
     {
         public string Role { get; set; } = string.Empty;

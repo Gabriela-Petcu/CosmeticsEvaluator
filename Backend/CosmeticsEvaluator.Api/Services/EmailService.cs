@@ -3,11 +3,21 @@ using SendGrid.Helpers.Mail;
 
 namespace CosmeticsEvaluator.Api.Services
 {
+    /// <summary>
+    /// Defineste contractul pentru serviciul de trimitere email-uri.
+    /// </summary>
     public interface IEmailService
     {
+        /// <summary>
+        /// Trimite un email de resetare a parolei catre adresa specificata.
+        /// </summary>
         Task SendPasswordResetEmailAsync(string toEmail, string resetLink);
     }
 
+    /// <summary>
+    /// Implementare a serviciului de email folosind SendGrid.
+    /// API key-ul este citit din variabila de mediu SENDGRID_API_KEY.
+    /// </summary>
     public class EmailService : IEmailService
     {
         private readonly IConfiguration _config;
@@ -26,7 +36,6 @@ namespace CosmeticsEvaluator.Api.Services
             var client = new SendGridClient(apiKey);
             var from = new EmailAddress(senderEmail, senderName);
             var to = new EmailAddress(toEmail);
-            var subject = "Resetare parolă SkinIQ";
 
             var htmlContent = $@"
                 <div style='font-family: Georgia, serif; max-width: 500px; margin: 0 auto; padding: 40px 20px;'>
@@ -55,7 +64,7 @@ namespace CosmeticsEvaluator.Api.Services
                     </p>
                 </div>";
 
-            var msg = MailHelper.CreateSingleEmail(from, to, subject, "", htmlContent);
+            var msg = MailHelper.CreateSingleEmail(from, to, "Resetare parolă SkinIQ", "", htmlContent);
             var response = await client.SendEmailAsync(msg);
 
             Console.WriteLine($"SendGrid status: {response.StatusCode}");

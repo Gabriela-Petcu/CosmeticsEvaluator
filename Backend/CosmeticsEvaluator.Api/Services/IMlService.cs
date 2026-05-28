@@ -2,13 +2,22 @@ using CosmeticsEvaluator.Api.Models;
 
 namespace CosmeticsEvaluator.Api.Services
 {
-    // Acest serviciu este responsabil pentru comunicarea cu componenta de Machine Learning, trimițând datele necesare și primind predicțiile care vor fi apoi stocate în baza de date și afișate utilizatorului
+    /// <summary>
+    /// Defineste contractul pentru comunicarea cu componenta de Machine Learning.
+    /// Trimite datele produsului si primeste predictia de evaluare.
+    /// </summary>
     public interface IMlService
     {
+        /// <summary>
+        /// Trimite un request de evaluare catre serviciul ML si returneaza raspunsul.
+        /// </summary>
         Task<EvaluationResponse?> GetPredictionAsync(ProductEvaluationRequest request);
     }
 
-    // Implementarea concretă a serviciului ML, care folosește HttpClient pentru a trimite cereri către un endpoint FastAPI și a primi răspunsurile de evaluare
+    /// <summary>
+    /// Implementare a serviciului ML care comunica cu endpoint-ul FastAPI prin HTTP.
+    /// URL-ul de baza este configurat prin MlService:BaseUrl in appsettings / variabile de mediu.
+    /// </summary>
     public class MlService : IMlService
     {
         private readonly HttpClient _httpClient;

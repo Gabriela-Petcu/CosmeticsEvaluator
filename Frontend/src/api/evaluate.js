@@ -20,15 +20,7 @@ export const evaluateById = async (productId) => {
 
   return { data: result }
 }
-export const evaluateManual = async (productData) => {
-  const res = await client.post('/evaluate', {
-    product_id: `manual_${Date.now()}`,
-    data: productData,
-  })
-  const data = res.data
-  const result = data.originalResult || data.OriginalResult || data
-  return { data: result }
-}
+
 
 export const getHistory = () =>
   client.get('/evaluate/history')

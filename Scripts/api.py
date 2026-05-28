@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ConfigDict
 
 from Src.pipeline import evaluate_product_for_user
@@ -20,7 +21,14 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="CosmeticsEvaluator ML Engine", lifespan=lifespan)
+app = FastAPI(title="SkinIQ ML Engine", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://cosmeticsevaluator-production.up.railway.app"],
+    allow_methods=["POST"],
+    allow_headers=["Content-Type"],
+)
 
 
 class ProductData(BaseModel):

@@ -8,6 +8,10 @@ using System.Security.Claims;
 
 namespace CosmeticsEvaluator.Api.Controllers
 {
+    /// <summary>
+    /// Controller pentru evaluarea produselor cosmetice prin serviciul ML.
+    /// Gestioneaza evaluarile din catalog, evaluarile manuale si istoricul utilizatorului.
+    /// </summary>
     [ApiController]
     [Route("[controller]")]
     public class EvaluateController : ControllerBase
@@ -21,7 +25,11 @@ namespace CosmeticsEvaluator.Api.Controllers
             _context = context;
         }
 
-        // Metodă helper — extrage userId sau returnează null
+
+        /// <summary>
+        /// Extrage ID-ul utilizatorului autentificat din token-ul JWT.
+        /// Returneaza null daca claim-ul lipseste.
+        /// </summary>
         private int? GetUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -29,21 +37,30 @@ namespace CosmeticsEvaluator.Api.Controllers
             return int.Parse(claim);
         }
 
-        // Metodă helper — construiește profilul din datele utilizatorului curent
+        /// <summary>
+        /// Construieste profilul de ten al utilizatorului din baza de date.
+        /// Returneaza valorile default dacă utilizatorul nu este gasit.
+        /// </summary>
         private async Task<UserProfileData> GetUserProfileAsync(int userId)
         {
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
-                return new UserProfileData(); // fallback la valorile default
+                return new UserProfileData();
 
             return new UserProfileData
-{
+            {
                 SkinType = user.SkinType,
                 MainConcern = user.MainConcern,
                 BudgetLevel = user.BudgetLevel
             };
         }
 
+
+        /// <summary>
+        /// Evalueaza un produs introdus manual de utilizator.
+        /// Profilul din request este inlocuit cu profilul real al utilizatorului autentificat.
+        /// Salveaza rezultatul in istoricul de evaluari.
+        /// </summary>
         [Authorize]
         [HttpPost]
         public async Task<IActionResult> EvaluateProduct([FromBody] ProductEvaluationRequest request)
@@ -51,12 +68,10 @@ namespace CosmeticsEvaluator.Api.Controllers
             var userId = GetUserId();
             if (userId == null) return Unauthorized();
 
-            // Înlocuiește profilul din request cu profilul real al utilizatorului
             request.UserProfile = await GetUserProfileAsync(userId.Value);
 
             try
             {
-                // Apelează serviciul ML cu datele complete
                 var result = await _mlService.GetPredictionAsync(request);
 
                 var entry = new EvaluationEntry
@@ -77,7 +92,8 @@ namespace CosmeticsEvaluator.Api.Controllers
                 _context.EvaluationHistory.Add(entry);
                 await _context.SaveChangesAsync();
 
-                return Ok(new {
+                return Ok(new
+                {
                     OriginalResult = result,
                     FinalVerdict = result.VerdictFinal,
                     SavedAt = entry.CreatedAt
@@ -89,6 +105,10 @@ namespace CosmeticsEvaluator.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Returneaza istoricul de evaluari al utilizatorului autentificat,
+        /// sortat descrescator dupa data.
+        /// </summary>
         [Authorize]
         [HttpGet("history")]
         public async Task<IActionResult> GetHistory()
@@ -104,6 +124,10 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(history);
         }
 
+        /// <summary>
+        /// Returneaza lista produselor din catalog (ID, brand, nume).
+        /// Folosit de frontend pentru afisarea listei de produse disponibile.
+        /// </summary>
         [Authorize]
         [HttpGet("products")]
         public async Task<IActionResult> GetProducts()
@@ -111,9 +135,15 @@ namespace CosmeticsEvaluator.Api.Controllers
             var products = await _context.ProductCatalog
                 .Select(p => new { p.Id, p.Brand, p.Name })
                 .ToListAsync();
+
             return Ok(products);
         }
 
+        /// <summary>
+        /// Evalueaza un produs din catalog după ID.
+        /// Preia datele complete ale produsului din baza de date,
+        /// aplica profilul real al utilizatorului si salvează rezultatul în istoric.
+        /// </summary>
         [Authorize]
         [HttpPost("evaluate-by-id/{id}")]
         public async Task<IActionResult> EvaluateById(int id)
@@ -125,35 +155,34 @@ namespace CosmeticsEvaluator.Api.Controllers
             if (product == null)
                 return NotFound("Produsul nu a fost găsit în catalog.");
 
-            // Profilul real al utilizatorului în loc de valorile hardcodate
             var userProfile = await GetUserProfileAsync(userId.Value);
 
             var mlRequest = new ProductEvaluationRequest
             {
                 ProductId = product.Id.ToString(),
                 Data = new ProductData
-{
-    review_score = product.ReviewScore,
-    n_of_reviews = product.NOfReviews,
-    n_of_loves = product.NOfLoves,
-    price_per_ounce = product.PricePerOunce ?? 0,
-    category_Anti_Aging = product.CategoryAntiAging,
-    category_Acne_Treatments = product.CategoryAcneTreatments,
-    category_Exfoliators = product.CategoryExfoliators,
-    category_Eye_Treatments = product.CategoryEyeTreatments,
-    category_Face_Masks = product.CategoryFaceMasks,
-    category_Face_Oils = product.CategoryFaceOils,
-    category_Face_Serums = product.CategoryFaceSerums,
-    category_Face_Sunscreen = product.CategoryFaceSunscreen,
-    category_Face_Wash = product.CategoryFaceWash,
-    category_Facial_Peels = product.CategoryFacialPeels,
-    category_Mists_Essences = product.CategoryMistsEssences,
-    category_Moisturizer_Treatments = product.CategoryMoisturizerTreatments,
-    category_Moisturizers = product.CategoryMoisturizers,
-    category_Night_Creams = product.CategoryNightCreams,
-    category_Toners = product.CategoryToners,
-    category_Blotting_Papers = product.CategoryBlottingPapers
-},
+                {
+                    review_score = product.ReviewScore,
+                    n_of_reviews = product.NOfReviews,
+                    n_of_loves = product.NOfLoves,
+                    price_per_ounce = product.PricePerOunce ?? 0,
+                    category_Anti_Aging = product.CategoryAntiAging,
+                    category_Acne_Treatments = product.CategoryAcneTreatments,
+                    category_Exfoliators = product.CategoryExfoliators,
+                    category_Eye_Treatments = product.CategoryEyeTreatments,
+                    category_Face_Masks = product.CategoryFaceMasks,
+                    category_Face_Oils = product.CategoryFaceOils,
+                    category_Face_Serums = product.CategoryFaceSerums,
+                    category_Face_Sunscreen = product.CategoryFaceSunscreen,
+                    category_Face_Wash = product.CategoryFaceWash,
+                    category_Facial_Peels = product.CategoryFacialPeels,
+                    category_Mists_Essences = product.CategoryMistsEssences,
+                    category_Moisturizer_Treatments = product.CategoryMoisturizerTreatments,
+                    category_Moisturizers = product.CategoryMoisturizers,
+                    category_Night_Creams = product.CategoryNightCreams,
+                    category_Toners = product.CategoryToners,
+                    category_Blotting_Papers = product.CategoryBlottingPapers
+                },
                 UserProfile = userProfile
             };
 
@@ -180,7 +209,8 @@ namespace CosmeticsEvaluator.Api.Controllers
                 _context.EvaluationHistory.Add(entry);
                 await _context.SaveChangesAsync();
 
-                return Ok(new {
+                return Ok(new
+                {
                     OriginalResult = result,
                     FinalVerdict = result.VerdictFinal,
                     ProductInfo = new { product.Brand, product.Name, product.Price }

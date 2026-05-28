@@ -11,6 +11,10 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace CosmeticsEvaluator.Api.Controllers
 {
+    /// <summary>
+    /// Controller pentru autentificare si gestionarea conturilor de utilizator.
+    /// Gestioneaza inregistrarea, autentificarea, profilul si resetarea parolei.
+    /// </summary>
     [ApiController]
     [Route("[controller]")]
     public class AuthController : ControllerBase
@@ -26,18 +30,20 @@ namespace CosmeticsEvaluator.Api.Controllers
             _emailService = emailService;
         }
 
+        /// <summary>
+        /// Inregistreaza un cont nou cu email si parola.
+        /// Parola este hash-uita inainte de stocare.
+        /// </summary>
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             if (await _context.Users.AnyAsync(u => u.Email == request.Email))
                 return BadRequest("Acest email este deja utilizat.");
 
-            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-
             var user = new User
             {
                 Email = request.Email,
-                PasswordHash = hashedPassword,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 Role = "User"
             };
 
@@ -47,6 +53,11 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(new { message = "Cont creat cu succes!" });
         }
 
+        /// <summary>
+        /// Autentifica un utilizator prin Google OAuth.
+        /// Valideaza access token-ul cu endpoint-ul Google UserInfo.
+        /// Daca utilizatorul nu exista, creeaza un cont nou automat.
+        /// </summary>
         [HttpPost("google-login")]
         public async Task<IActionResult> GoogleLogin([FromBody] string accessToken)
         {
@@ -82,10 +93,9 @@ namespace CosmeticsEvaluator.Api.Controllers
                     await _context.SaveChangesAsync();
                 }
 
-                var token = GenerateJwtToken(user);
-
-                return Ok(new {
-                    Token = token,
+                return Ok(new
+                {
+                    Token = GenerateJwtToken(user),
                     Email = user.Email,
                     Role = user.Role,
                     Message = "Logare cu Google reușită!"
@@ -97,6 +107,10 @@ namespace CosmeticsEvaluator.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Autentifica un utilizator cu email si parola.
+        /// Returneaza un token JWT valid 7 zile.
+        /// </summary>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
@@ -111,17 +125,19 @@ namespace CosmeticsEvaluator.Api.Controllers
             if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 return Unauthorized("Email sau parolă incorectă.");
 
-            var tokenString = GenerateJwtToken(user);
-
             return Ok(new
             {
-                Token = tokenString,
+                Token = GenerateJwtToken(user),
                 Email = user.Email,
                 Role = user.Role,
                 Message = "Autentificare reușită!"
             });
         }
 
+        /// <summary>
+        /// Actualizeaza profilul de ten al utilizatorului autentificat.
+        /// Valideaza ca valorile trimise se afla in seturile permise.
+        /// </summary>
         [Authorize]
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
@@ -155,6 +171,9 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(new { message = "Profil actualizat cu succes!" });
         }
 
+        /// <summary>
+        /// Returneaza profilul utilizatorului autentificat curent.
+        /// </summary>
         [Authorize]
         [HttpGet("profile")]
         public async Task<IActionResult> GetProfile()
@@ -177,13 +196,19 @@ namespace CosmeticsEvaluator.Api.Controllers
             });
         }
 
+        /// <summary>
+        /// Initiaza fluxul de resetare a parolei.
+        /// Genereaza un token unic, il salveaza si trimite un email cu link de resetare.
+        /// Returneaza acelasi mesaj indiferent dacă emailul exista, pentru securitate.
+        /// </summary>
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            var genericMessage = new { message = "Dacă emailul există, vei primi un link de resetare." };
 
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
             if (user == null)
-                return Ok(new { message = "Dacă emailul există, vei primi un link de resetare." });
+                return Ok(genericMessage);
 
             if (user.PasswordHash == "EXTERNAL_AUTH_GOOGLE")
                 return BadRequest("Acest cont folosește autentificarea Google. Parola se gestionează din contul Google.");
@@ -208,14 +233,17 @@ namespace CosmeticsEvaluator.Api.Controllers
                 Console.WriteLine($"EROARE EMAIL: {ex.Message}");
             }
 
-            return Ok(new { message = "Dacă emailul există, vei primi un link de resetare." });
+            return Ok(genericMessage);
         }
 
+        /// <summary>
+        /// Reseteaza parola utilizatorului pe baza token-ului primit prin email.
+        /// Token-ul este invalidat dupa utilizare.
+        /// </summary>
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-
             if (user == null)
                 return BadRequest("Cerere invalidă.");
 
@@ -234,10 +262,15 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(new { message = "Parola a fost resetată cu succes!" });
         }
 
+        /// <summary>
+        /// Genereaza un token JWT semnat pentru utilizatorul dat.
+        /// Token-ul contine email, rol si ID-ul utilizatorului si este valabil 7 zile.
+        /// </summary>
         private string GenerateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_config["Jwt:Key"]!);
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
@@ -253,11 +286,14 @@ namespace CosmeticsEvaluator.Api.Controllers
                     new SymmetricSecurityKey(key),
                     SecurityAlgorithms.HmacSha256Signature)
             };
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
+
+            return tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
         }
     }
 
+    /// <summary>
+    /// Model pentru informatiile returnate de Google UserInfo endpoint.
+    /// </summary>
     public class GoogleUserInfo
     {
         [System.Text.Json.Serialization.JsonPropertyName("email")]

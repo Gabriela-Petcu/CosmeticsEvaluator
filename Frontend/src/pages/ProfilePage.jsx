@@ -104,6 +104,11 @@ export default function ProfilePage() {
   const recCount = history.filter(h => h.finalVerdict === 'Recomandat').length
   const noCount = history.filter(h => h.finalVerdict === 'Nerecomandat').length
 
+  // Contul Google este identificat prin valoarea speciala a passwordHash
+  // returnata de backend doar in raspunsul de login/register, nu in /profile
+  // Folosim email-ul din AuthContext pentru a detecta conturile externe
+  const isGoogleAccount = user?.email && !profile?.createdWithPassword
+
   if (loadingProfile) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -117,7 +122,6 @@ export default function ProfilePage() {
 
       {/* SIDEBAR */}
       <div className="bg-cream-warm border-r border-rose-border px-5 py-7 flex flex-col gap-7">
-        {/* Avatar */}
         <div className="flex flex-col items-center gap-2">
           <div className="w-16 h-16 rounded-full bg-rose-border flex items-center justify-center font-serif text-2xl font-light text-rose-dark border-2 border-rose-mid">
             {initials}
@@ -128,7 +132,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Meniu */}
         <div className="flex flex-col gap-1">
           {[
             { id: 'profil', label: 'profilul meu', icon: '👤' },
@@ -164,7 +167,6 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* Informații cont */}
             <Section title="Informații cont">
               <div className="grid grid-cols-2 gap-5">
                 <InfoField label="EMAIL" value={profile?.email} />
@@ -173,7 +175,6 @@ export default function ProfilePage() {
               </div>
             </Section>
 
-            {/* Profilul de ten */}
             <Section
               title="Profilul de ten"
               action={
@@ -208,7 +209,6 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-5">
-                  {/* Edit tip ten */}
                   <div>
                     <div className="text-xs font-medium tracking-widest text-gray-500 mb-2">TIP TEN</div>
                     <div className="grid grid-cols-5 gap-2">
@@ -221,7 +221,6 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   </div>
-                  {/* Edit preocupare */}
                   <div>
                     <div className="text-xs font-medium tracking-widest text-gray-500 mb-2">PREOCUPARE PRINCIPALĂ</div>
                     <div className="grid grid-cols-3 gap-2">
@@ -234,7 +233,6 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   </div>
-                  {/* Edit buget */}
                   <div>
                     <div className="text-xs font-medium tracking-widest text-gray-500 mb-2">NIVEL BUGET</div>
                     <div className="grid grid-cols-3 gap-2">
@@ -252,7 +250,6 @@ export default function ProfilePage() {
               )}
             </Section>
 
-            {/* Activitate */}
             <Section title="Activitatea mea">
               <div className="grid grid-cols-3 gap-4">
                 <StatCard num={history.length} label="produse evaluate" />
@@ -313,32 +310,26 @@ export default function ProfilePage() {
 
         {/* TAB: SECURITATE */}
         {activeTab === 'securitate' && (
-  <Section title="Securitate">
-    <div className="flex flex-col gap-4">
-      <div className="p-4 bg-rose-light border border-rose-border rounded-xl text-sm text-rose-dark">
-        <div className="font-medium mb-2">🔐 Resetare parolă</div>
-        <div className="text-xs text-muted mb-3">
-          Poți reseta parola prin email. Vei primi un link valabil 1 oră.
-        </div>
-        {profile?.passwordHash === 'EXTERNAL_AUTH_GOOGLE' ? (
-          <div className="text-xs text-muted italic">
-            Contul tău folosește autentificarea Google — parola se gestionează din contul Google.
-          </div>
-        ) : (
-          <button
-            onClick={() => window.location.href = '/forgot-password'}
-            className="btn-outline text-xs py-2 px-4">
-            trimite link de resetare
-          </button>
+          <Section title="Securitate">
+            <div className="flex flex-col gap-4">
+              <div className="p-4 bg-rose-light border border-rose-border rounded-xl text-sm text-rose-dark">
+                <div className="font-medium mb-2">🔐 Resetare parolă</div>
+                <div className="text-xs text-muted mb-3">
+                  Poți reseta parola prin email. Vei primi un link valabil 1 oră.
+                </div>
+                <button
+                  onClick={() => window.location.href = '/forgot-password'}
+                  className="btn-outline text-xs py-2 px-4">
+                  trimite link de resetare
+                </button>
+              </div>
+              <div className="p-4 bg-cream-warm border border-rose-border rounded-xl text-sm">
+                <div className="font-medium mb-1 text-ink">📧 Email înregistrat</div>
+                <div className="text-xs text-muted">{user?.email}</div>
+              </div>
+            </div>
+          </Section>
         )}
-      </div>
-      <div className="p-4 bg-cream-warm border border-rose-border rounded-xl text-sm">
-        <div className="font-medium mb-1 text-ink">📧 Email înregistrat</div>
-        <div className="text-xs text-muted">{user?.email}</div>
-      </div>
-    </div>
-  </Section>
-)}
 
       </div>
     </div>

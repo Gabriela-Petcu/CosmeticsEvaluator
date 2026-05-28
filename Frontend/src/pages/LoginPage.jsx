@@ -15,60 +15,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-const handleSubmit = async (e) => {
-  e.preventDefault()
-  setError('')
-  setLoading(true)
-  try {
-    const res = await loginApi(email, password)
-    const { token, email: userEmail, role } = res.data
-
-    localStorage.setItem('skiniq_token', token)
-
-    let skinType = 'normal'
-    let mainConcern = 'anti_aging'
-    let budgetLevel = 'medium'
-    let userRole = role
-
-    try {
-      const profileRes = await getProfile()
-      skinType = profileRes.data.skinType || skinType
-      mainConcern = profileRes.data.mainConcern || mainConcern
-      budgetLevel = profileRes.data.budgetLevel || budgetLevel
-      userRole = profileRes.data.role || userRole
-    } catch {}
-
-    login(token, {
-      email: userEmail,
-      role: userRole,
-      skinType,
-      mainConcern,
-      budgetLevel,
-    })
-
-    navigate('/')
-  } catch (err) {
-    console.error('Login error:', err)
-    const msg = err.response?.data
-    if (typeof msg === 'string') setError(msg)
-    else setError('Email sau parolă incorectă.')
-  } finally {
-    setLoading(false)
-  }
-}
-
-const handleGoogleLogin = useGoogleLogin({
-  onSuccess: async (tokenResponse) => {
-    setLoading(true)
+  const handleSubmit = async (e) => {
+    e.preventDefault()
     setError('')
+    setLoading(true)
     try {
-      // Obținem datele userului de la Google
-      const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-      }).then(r => r.json())
-
-      // Trimitem id_token la backend
-      const res = await googleLogin(tokenResponse.access_token)
+      const res = await loginApi(email, password)
       const { token, email: userEmail, role } = res.data
 
       localStorage.setItem('skiniq_token', token)
@@ -76,30 +28,64 @@ const handleGoogleLogin = useGoogleLogin({
       let skinType = 'normal'
       let mainConcern = 'anti_aging'
       let budgetLevel = 'medium'
+      let userRole = role
 
       try {
         const profileRes = await getProfile()
         skinType = profileRes.data.skinType || skinType
         mainConcern = profileRes.data.mainConcern || mainConcern
         budgetLevel = profileRes.data.budgetLevel || budgetLevel
+        userRole = profileRes.data.role || userRole
       } catch {}
 
-      login(token, { email: userEmail, role, skinType, mainConcern, budgetLevel })
+      login(token, { email: userEmail, role: userRole, skinType, mainConcern, budgetLevel })
       navigate('/')
     } catch (err) {
-      console.error('Google login error:', err)
-      setError('Autentificarea cu Google a eșuat. Încearcă din nou.')
+      console.error('Login error:', err)
+      const msg = err.response?.data
+      if (typeof msg === 'string') setError(msg)
+      else setError('Email sau parolă incorectă.')
     } finally {
       setLoading(false)
     }
-  },
-  onError: () => setError('Autentificarea cu Google a fost anulată.')
-})
+  }
+
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true)
+      setError('')
+      try {
+        const res = await googleLogin(tokenResponse.access_token)
+        const { token, email: userEmail, role } = res.data
+
+        localStorage.setItem('skiniq_token', token)
+
+        let skinType = 'normal'
+        let mainConcern = 'anti_aging'
+        let budgetLevel = 'medium'
+
+        try {
+          const profileRes = await getProfile()
+          skinType = profileRes.data.skinType || skinType
+          mainConcern = profileRes.data.mainConcern || mainConcern
+          budgetLevel = profileRes.data.budgetLevel || budgetLevel
+        } catch {}
+
+        login(token, { email: userEmail, role, skinType, mainConcern, budgetLevel })
+        navigate('/')
+      } catch (err) {
+        console.error('Google login error:', err)
+        setError('Autentificarea cu Google a eșuat. Încearcă din nou.')
+      } finally {
+        setLoading(false)
+      }
+    },
+    onError: () => setError('Autentificarea cu Google a fost anulată.')
+  })
 
   return (
     <div className="grid grid-cols-2 min-h-[calc(100vh-65px)]">
 
-      {/* STÂNGA */}
       <div className="bg-rose-light border-r border-rose-border px-11 py-12 flex flex-col justify-between">
         <div className="flex flex-col gap-8">
           <div>
@@ -128,7 +114,6 @@ const handleGoogleLogin = useGoogleLogin({
         </p>
       </div>
 
-      {/* DREAPTA */}
       <div className="bg-cream px-11 py-12 flex flex-col justify-center gap-7">
         <div>
           <h2 className="text-xl font-medium tracking-tight">Autentificare</h2>
@@ -140,18 +125,16 @@ const handleGoogleLogin = useGoogleLogin({
           </p>
         </div>
 
-        {/* GOOGLE */}
         <button
-  onClick={() => handleGoogleLogin()}
-  disabled={loading}
-  className="flex items-center justify-center gap-3 w-full py-3 border border-gray-200 rounded-lg bg-white text-sm font-medium hover:border-rose-mid transition-colors disabled:opacity-60">
-  <GoogleIcon />
-  Continuă cu Google
-</button>
+          onClick={() => handleGoogleLogin()}
+          disabled={loading}
+          className="flex items-center justify-center gap-3 w-full py-3 border border-gray-200 rounded-lg bg-white text-sm font-medium hover:border-rose-mid transition-colors disabled:opacity-60">
+          <GoogleIcon />
+          Continuă cu Google
+        </button>
 
         <Divider />
 
-        {/* FORMULAR */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {error && (
             <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
@@ -185,8 +168,7 @@ const handleGoogleLogin = useGoogleLogin({
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-soft hover:text-muted text-sm"
-              >
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-soft hover:text-muted text-sm">
                 {showPassword ? '🙈' : '👁️'}
               </button>
             </div>
@@ -203,15 +185,14 @@ const handleGoogleLogin = useGoogleLogin({
               ține-mă conectată
             </label>
             <Link to="/forgot-password" className="text-xs text-rose-primary hover:underline">
-  ai uitat parola?
-</Link>
+              ai uitat parola?
+            </Link>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
+            className="btn-primary mt-1 disabled:opacity-60 disabled:cursor-not-allowed">
             {loading ? 'se verifică...' : 'intră în cont'}
           </button>
         </form>
