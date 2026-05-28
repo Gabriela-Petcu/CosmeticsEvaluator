@@ -289,6 +289,20 @@ namespace CosmeticsEvaluator.Api.Controllers
 
             return tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
         }
+
+        [HttpPost("make-admin")]
+public async Task<IActionResult> MakeAdmin([FromBody] string email)
+{
+    if (email != "petcugabrielai13@gmail.com")
+        return Unauthorized();
+
+    var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+    if (user == null) return NotFound("Creează mai întâi contul.");
+
+    user.Role = "Admin";
+    await _context.SaveChangesAsync();
+    return Ok(new { message = "Admin setat cu succes!" });
+}
     }
 
     /// <summary>
