@@ -19,7 +19,7 @@ namespace CosmeticsEvaluator.Api.Services
 
         public async Task SendPasswordResetEmailAsync(string toEmail, string resetLink)
         {
-            var apiKey = _config["SendGrid__ApiKey"]!;
+            var apiKey = Environment.GetEnvironmentVariable("SENDGRID_API_KEY")!;
             var senderEmail = _config["Email:SenderEmail"]!;
             var senderName = _config["Email:SenderName"]!;
 
