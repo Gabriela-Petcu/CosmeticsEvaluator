@@ -234,17 +234,6 @@ namespace CosmeticsEvaluator.Api.Controllers
             return Ok(new { message = "Parola a fost resetată cu succes!" });
         }
 
-        // Endpoint temporar - sterge dupa folosire!
-        [HttpPost("make-admin")]
-        public async Task<IActionResult> MakeAdmin([FromBody] string email)
-        {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-            if (user == null) return NotFound();
-            user.Role = "Admin";
-            await _context.SaveChangesAsync();
-            return Ok(new { message = $"{email} este acum Admin!" });
-        }
-
         private string GenerateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
