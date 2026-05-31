@@ -3,20 +3,20 @@ using CosmeticsEvaluator.Api.Models;
 namespace CosmeticsEvaluator.Api.Services
 {
     /// <summary>
-    /// Defineste contractul pentru comunicarea cu componenta de Machine Learning.
-    /// Trimite datele produsului si primeste predictia de evaluare.
+    /// Defines the contract for communicating with the Machine Learning component.
+    /// Sends product data and receives the evaluation prediction.
     /// </summary>
     public interface IMlService
     {
         /// <summary>
-        /// Trimite un request de evaluare catre serviciul ML si returneaza raspunsul.
+        /// Sends an evaluation request to the ML service and returns the response.
         /// </summary>
         Task<EvaluationResponse?> GetPredictionAsync(ProductEvaluationRequest request);
     }
 
     /// <summary>
-    /// Implementare a serviciului ML care comunica cu endpoint-ul FastAPI prin HTTP.
-    /// URL-ul de baza este configurat prin MlService:BaseUrl in appsettings / variabile de mediu.
+    /// Implements the ML service that communicates with the FastAPI endpoint via HTTP.
+    /// The base URL is configured through MlService:BaseUrl in appsettings or environment variables.
     /// </summary>
     public class MlService : IMlService
     {
@@ -28,7 +28,7 @@ namespace CosmeticsEvaluator.Api.Services
 
             var baseUrl = config["MlService:BaseUrl"]
                 ?? throw new InvalidOperationException(
-                    "MlService:BaseUrl nu este configurat în appsettings."
+                    "MlService:BaseUrl is not configured in appsettings."
                 );
 
             _httpClient.BaseAddress = new Uri(baseUrl);

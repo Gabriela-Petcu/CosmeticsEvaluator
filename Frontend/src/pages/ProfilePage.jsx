@@ -5,32 +5,32 @@ import { getProfile, updateProfile } from '../api/auth'
 import { getHistory, deleteEvaluation } from '../api/evaluate'
 
 const SKIN_TYPES = [
-  { value: 'oily', label: 'gras', icon: '💧' },
-  { value: 'dry', label: 'uscat', icon: '☀️' },
-  { value: 'combination', label: 'mixt', icon: '⚖️' },
-  { value: 'sensitive', label: 'sensibil', icon: '🌸' },
-  { value: 'normal', label: 'normal', icon: '✓' },
+  { value: 'oily',        label: 'gras',     icon: '💧' },
+  { value: 'dry',         label: 'uscat',    icon: '☀️' },
+  { value: 'combination', label: 'mixt',     icon: '⚖️' },
+  { value: 'sensitive',   label: 'sensibil', icon: '🌸' },
+  { value: 'normal',      label: 'normal',   icon: '✓'  },
 ]
 
 const CONCERNS = [
-  { value: 'acne', label: 'acnee', icon: '🔬' },
+  { value: 'acne',        label: 'acnee',        icon: '🔬' },
   { value: 'dehydration', label: 'deshidratare', icon: '💦' },
-  { value: 'anti_aging', label: 'anti-aging', icon: '✨' },
-  { value: 'dark_spots', label: 'pete', icon: '🎯' },
-  { value: 'redness', label: 'roșeață', icon: '🌿' },
-  { value: 'dullness', label: 'ten tern', icon: '🌙' },
+  { value: 'anti_aging',  label: 'anti-aging',   icon: '✨' },
+  { value: 'dark_spots',  label: 'pete',         icon: '🎯' },
+  { value: 'redness',     label: 'roșeată',      icon: '🌿' },
+  { value: 'dullness',    label: 'ten tern',     icon: '🌙' },
 ]
 
 const BUDGETS = [
-  { value: 'low', label: 'redus', desc: 'sub $30' },
-  { value: 'medium', label: 'mediu', desc: '$30–$80' },
-  { value: 'high', label: 'ridicat', desc: 'peste $80' },
+  { value: 'low',    label: 'redus',   desc: 'sub $30'    },
+  { value: 'medium', label: 'mediu',   desc: '$30–$80'    },
+  { value: 'high',   label: 'ridicat', desc: 'peste $80'  },
 ]
 
 const VERDICT_STYLES = {
-  'Recomandat': { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800', badge: 'bg-green-100 text-green-800' },
-  'Nerecomandat': { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', badge: 'bg-red-100 text-red-800' },
-  default: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', badge: 'bg-amber-100 text-amber-800' },
+  'Recomandat':   { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800', badge: 'bg-green-100 text-green-800' },
+  'Nerecomandat': { bg: 'bg-red-50',   border: 'border-red-200',   text: 'text-red-800',   badge: 'bg-red-100 text-red-800'   },
+  default:        { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', badge: 'bg-amber-100 text-amber-800' },
 }
 
 function getVerdictStyle(verdict) {
@@ -41,18 +41,18 @@ export default function ProfilePage() {
   const { user, logout, login, token } = useAuth()
   const navigate = useNavigate()
 
-  const [activeTab, setActiveTab] = useState('profil')
-  const [profile, setProfile] = useState(null)
-  const [history, setHistory] = useState([])
+  const [activeTab, setActiveTab]           = useState('profil')
+  const [profile, setProfile]               = useState(null)
+  const [history, setHistory]               = useState([])
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [loadingHistory, setLoadingHistory] = useState(true)
 
-  const [editingSkin, setEditingSkin] = useState(false)
-  const [skinType, setSkinType] = useState('')
-  const [mainConcern, setMainConcern] = useState('')
-  const [budgetLevel, setBudgetLevel] = useState('')
-  const [savingSkin, setSavingSkin] = useState(false)
-  const [skinSuccess, setSkinSuccess] = useState(false)
+  const [editingSkin, setEditingSkin]   = useState(false)
+  const [skinType, setSkinType]         = useState('')
+  const [mainConcern, setMainConcern]   = useState('')
+  const [budgetLevel, setBudgetLevel]   = useState('')
+  const [savingSkin, setSavingSkin]     = useState(false)
+  const [skinSuccess, setSkinSuccess]   = useState(false)
 
   useEffect(() => {
     if (!user) { navigate('/login'); return }
@@ -100,13 +100,10 @@ export default function ProfilePage() {
 
   const handleLogout = () => { logout(); navigate('/') }
 
-  const initials = user?.email?.slice(0, 2).toUpperCase() || 'AN'
-  const recCount = history.filter(h => h.finalVerdict === 'Recomandat').length
-  const noCount = history.filter(h => h.finalVerdict === 'Nerecomandat').length
+  const initials  = user?.email?.slice(0, 2).toUpperCase() || 'AN'
+  const recCount  = history.filter(h => h.finalVerdict === 'Recomandat').length
+  const noCount   = history.filter(h => h.finalVerdict === 'Nerecomandat').length
 
-  // Contul Google este identificat prin valoarea speciala a passwordHash
-  // returnata de backend doar in raspunsul de login/register, nu in /profile
-  // Folosim email-ul din AuthContext pentru a detecta conturile externe
   const isGoogleAccount = user?.email && !profile?.createdWithPassword
 
   if (loadingProfile) {
@@ -134,9 +131,9 @@ export default function ProfilePage() {
 
         <div className="flex flex-col gap-1">
           {[
-            { id: 'profil', label: 'profilul meu', icon: '👤' },
-            { id: 'istoric', label: 'istoric evaluări', icon: '📋' },
-            { id: 'securitate', label: 'securitate', icon: '🔒' },
+            { id: 'profil',     label: 'profilul meu',      icon: '👤' },
+            { id: 'istoric',    label: 'istoric evaluări',  icon: '📋' },
+            { id: 'securitate', label: 'securitate',        icon: '🔒' },
           ].map(item => (
             <button key={item.id} onClick={() => setActiveTab(item.id)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-colors cursor-pointer

@@ -8,37 +8,14 @@ class FinalRecommendation:
 
 
 def build_final_recommendation(
-    merita: int,
-    merita_ml: int,
-    se_potriveste: int
+    is_recommended: int,
+    is_recommended_ml: int,
+    is_compatible: int
 ) -> FinalRecommendation:
-    """
-    Construiește verdictul final pe baza celor 3 componente:
-    - baseline (Merita)
-    - model ML (MeritaML)
-    - user matching (SePotriveste)
+    if is_recommended not in (0, 1) or is_recommended_ml not in (0, 1) or is_compatible not in (0, 1):
+        raise ValueError("All input values must be 0 or 1.")
 
-    Politica folosită în proiect este:
-
-    1. baseline + ML evaluează produsul ca valoare generală
-    2. user matching personalizează verdictul pentru utilizator
-    3. dacă baseline și ML sunt de acord:
-       - rezultatul este considerat stabil
-       - user matching doar adaptează verdictul la profil
-    4. dacă baseline și ML sunt în conflict:
-       - verdictul devine unul prudent, de tip "evaluare incertă"
-       - user matching oferă doar context suplimentar
-
-    Astfel:
-    - componentele de evaluare generală a produsului sunt baseline și ML
-    - componenta de personalizare este user matching
-    """
-
-    if merita not in (0, 1) or merita_ml not in (0, 1) or se_potriveste not in (0, 1):
-        raise ValueError("Toate valorile trebuie să fie 0 sau 1.")
-
-    # Caz stabil pozitiv: produs bun și potrivit pentru utilizator
-    if merita == 1 and merita_ml == 1 and se_potriveste == 1:
+    if is_recommended == 1 and is_recommended_ml == 1 and is_compatible == 1:
         return FinalRecommendation(
             verdict="Recomandat",
             explanation=(
@@ -47,8 +24,7 @@ def build_final_recommendation(
             )
         )
 
-    # Caz stabil pozitiv: produs bun în general, dar nu pentru acest utilizator
-    if merita == 1 and merita_ml == 1 and se_potriveste == 0:
+    if is_recommended == 1 and is_recommended_ml == 1 and is_compatible == 0:
         return FinalRecommendation(
             verdict="Produs bun, dar nepotrivit pentru tine",
             explanation=(
@@ -57,8 +33,7 @@ def build_final_recommendation(
             )
         )
 
-    # Caz stabil negativ: produs slab în general, dar aparent compatibil cu profilul
-    if merita == 0 and merita_ml == 0 and se_potriveste == 1:
+    if is_recommended == 0 and is_recommended_ml == 0 and is_compatible == 1:
         return FinalRecommendation(
             verdict="Compatibil cu profilul tău, dar slab evaluat",
             explanation=(
@@ -67,8 +42,7 @@ def build_final_recommendation(
             )
         )
 
-    # Caz stabil negativ: produs slab și nepotrivit
-    if merita == 0 and merita_ml == 0 and se_potriveste == 0:
+    if is_recommended == 0 and is_recommended_ml == 0 and is_compatible == 0:
         return FinalRecommendation(
             verdict="Nerecomandat",
             explanation=(
@@ -77,8 +51,7 @@ def build_final_recommendation(
             )
         )
 
-    # Cazuri conflictuale baseline vs ML -> verdict prudent
-    if se_potriveste == 1:
+    if is_compatible == 1:
         return FinalRecommendation(
             verdict="Evaluare incertă, dar compatibil cu profilul tău",
             explanation=(

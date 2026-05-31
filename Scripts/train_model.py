@@ -13,22 +13,17 @@ from Src.feature_engineering import add_engineered_features
 def main():
     df = load_skincare_dv()
 
-    # Calculăm eticheta temporară DOAR pentru stratificare
     strat_df = add_engineered_features(df.copy())
     strat_df = add_log_features(strat_df)
-
-    # strat_scaler este calculat pe întregul dataset în mod intenționat.
-    # Este folosit exclusiv pentru generarea etichetei de stratificare (y_strat)
-    # și nu intră în antrenarea sau evaluarea modelului.
     strat_scaler = ScoreScaler().fit(strat_df, cols=SCORE_COLUMNS)
     strat_df = compute_score_with_scaler(strat_df, strat_scaler)
-    strat_df = strat_df.dropna(subset=["ScorFinal"]).copy()
-    strat_threshold = float(strat_df["ScorFinal"].quantile(0.75))
+    strat_df = strat_df.dropna(subset=["FinalScore"]).copy()
+    strat_threshold = float(strat_df["FinalScore"].quantile(0.75))
     strat_df = label_with_threshold(strat_df, strat_threshold)
 
     valid_idx = strat_df.index
     df_valid = df.loc[valid_idx]
-    y_strat = strat_df["Merita"]
+    y_strat = strat_df["IsRecommended"]
 
     train_idx, test_idx = train_test_split(
         df_valid.index,
@@ -51,27 +46,27 @@ def main():
     train_scored = compute_score_with_scaler(train_df, scaler)
     test_scored = compute_score_with_scaler(test_df, scaler)
 
-    train_scored = train_scored.dropna(subset=["ScorFinal"]).copy()
-    test_scored = test_scored.dropna(subset=["ScorFinal"]).copy()
+    train_scored = train_scored.dropna(subset=["FinalScore"]).copy()
+    test_scored = test_scored.dropna(subset=["FinalScore"]).copy()
 
-    threshold = float(train_scored["ScorFinal"].quantile(0.75))
+    threshold = float(train_scored["FinalScore"].quantile(0.75))
     train_labeled = label_with_threshold(train_scored, threshold)
     test_labeled = label_with_threshold(test_scored, threshold)
 
     print(f"Threshold (q=0.75) computed on train: {threshold:.4f}")
-    print("Train label distribution:\n", train_labeled["Merita"].value_counts(normalize=True))
-    print("Test  label distribution:\n", test_labeled["Merita"].value_counts(normalize=True))
+    print("Train label distribution:\n", train_labeled["IsRecommended"].value_counts(normalize=True))
+    print("Test  label distribution:\n", test_labeled["IsRecommended"].value_counts(normalize=True))
 
     full_system = Pipeline([
         ("preprocessor", build_preprocessing_pipeline()),
         ("classifier", LogisticRegression(max_iter=1000, random_state=42))
     ])
 
-    full_system.fit(train_labeled[MODEL_FEATURES], train_labeled["Merita"])
+    full_system.fit(train_labeled[MODEL_FEATURES], train_labeled["IsRecommended"])
     pred = full_system.predict(test_labeled[MODEL_FEATURES])
 
-    print("\nClassification report:\n", classification_report(test_labeled["Merita"], pred))
-    print("Confusion matrix:\n", confusion_matrix(test_labeled["Merita"], pred))
+    print("\nClassification report:\n", classification_report(test_labeled["IsRecommended"], pred))
+    print("Confusion matrix:\n", confusion_matrix(test_labeled["IsRecommended"], pred))
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -83,7 +78,7 @@ def main():
 
     out_path = MODELS_DIR / "bundle_logreg_v1.joblib"
     joblib.dump(bundle, out_path)
-    print(f"Model salvat în: {out_path}")
+    print(f"Model saved to: {out_path}")
 
 
 if __name__ == "__main__":

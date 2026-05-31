@@ -8,27 +8,27 @@ def main():
     print("Loading baseline+ml analysis dataset...")
     df_labeled = build_baseline_ml_analysis_df()
 
-    df_labeled["Disagreement"] = df_labeled["Merita"] != df_labeled["MeritaML"]
+    df_labeled["HasDisagreement"] = df_labeled["IsRecommended"] != df_labeled["IsRecommendedML"]
 
     total = len(df_labeled)
-    disagreements = int(df_labeled["Disagreement"].sum())
+    disagreements = int(df_labeled["HasDisagreement"].sum())
     agreement = total - disagreements
     disagreement_rate = disagreements / total
 
-    print("\n=== BASELINE vs ML COMPARISON ===")
+    print("\n BASELINE vs ML COMPARISON ")
     print(f"Total products: {total}")
     print(f"Agreement: {agreement}")
     print(f"Disagreements: {disagreements}")
     print(f"Disagreement rate: {disagreement_rate:.4f}")
 
     baseline_0_ml_1 = df_labeled[
-        (df_labeled["Merita"] == 0) &
-        (df_labeled["MeritaML"] == 1)
+        (df_labeled["IsRecommended"] == 0) &
+        (df_labeled["IsRecommendedML"] == 1)
     ]
 
     baseline_1_ml_0 = df_labeled[
-        (df_labeled["Merita"] == 1) &
-        (df_labeled["MeritaML"] == 0)
+        (df_labeled["IsRecommended"] == 1) &
+        (df_labeled["IsRecommendedML"] == 0)
     ]
 
     print("\nType of disagreements:")
@@ -59,7 +59,7 @@ def main():
     summary_path = PROCESSED_DIR / "disagreements_summary.csv"
     summary.to_csv(summary_path, index=False)
 
-    examples = df_labeled[df_labeled["Disagreement"]].copy()
+    examples = df_labeled[df_labeled["HasDisagreement"]].copy()
     examples_path = PROCESSED_DIR / "disagreements_examples.csv"
     examples.to_csv(examples_path, index=False)
 

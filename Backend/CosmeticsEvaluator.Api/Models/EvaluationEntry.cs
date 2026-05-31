@@ -4,7 +4,7 @@ namespace CosmeticsEvaluator.Api.Models
 {
     public class EvaluationEntry
     {
-        //rezultatul complet al unei evaluari, stocat în baza de date pentru istoric și analiză ulterioară
+        //Stores the complete result of an evaluation in the database for history and analysis.
         [Key]
         public int Id { get; set; }
         public string Brand { get; set; } = string.Empty;

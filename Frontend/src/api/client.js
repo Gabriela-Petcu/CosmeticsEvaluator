@@ -7,7 +7,6 @@ const client = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Atașează token-ul JWT automat la fiecare request
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('skiniq_token')
   if (token) {
@@ -16,7 +15,6 @@ client.interceptors.request.use((config) => {
   return config
 })
 
-// Dacă token-ul e expirat, deloghez automat
 client.interceptors.response.use(
   (response) => response,
   (error) => {

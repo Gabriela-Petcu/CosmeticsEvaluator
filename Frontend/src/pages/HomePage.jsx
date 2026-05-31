@@ -99,8 +99,8 @@ export default function HomePage() {
         </h1>
 
         <p className="text-sm text-muted leading-relaxed max-w-lg">
-          Introduci un produs de skincare. Algoritmul analizează recenzii, popularitate
-          și compatibilitatea cu profilul tău de ten — fără sponsorizări, fără compromisuri.
+          Introduci un produs de skincare. Algoritmul calculează un scor bazat pe recenzii, 
+          popularitate și raport calitate-preț, apoi îl ajustează la profilul tău de ten.
         </p>
 
         <form onSubmit={handleSearch} className="flex border border-rose-mid rounded-lg overflow-hidden w-full max-w-xl shadow-sm">

@@ -9,8 +9,8 @@ using System.Security.Claims;
 namespace CosmeticsEvaluator.Api.Controllers
 {
     /// <summary>
-    /// Controller pentru evaluarea produselor cosmetice prin serviciul ML.
-    /// Gestioneaza evaluarile din catalog, evaluarile manuale si istoricul utilizatorului.
+    /// Controller for evaluating cosmetic products through the ML service.
+    /// Handles catalog evaluations, manual evaluations, and user evaluation history.
     /// </summary>
     [ApiController]
     [Route("[controller]")]
@@ -22,13 +22,12 @@ namespace CosmeticsEvaluator.Api.Controllers
         public EvaluateController(IMlService mlService, AppDbContext context)
         {
             _mlService = mlService;
-            _context = context;
+            _context   = context;
         }
 
-
         /// <summary>
-        /// Extrage ID-ul utilizatorului autentificat din token-ul JWT.
-        /// Returneaza null daca claim-ul lipseste.
+        /// Extracts the authenticated user's ID from the JWT token.
+        /// Returns null if the claim is missing.
         /// </summary>
         private int? GetUserId()
         {
@@ -38,8 +37,8 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
 
         /// <summary>
-        /// Construieste profilul de ten al utilizatorului din baza de date.
-        /// Returneaza valorile default dacă utilizatorul nu este gasit.
+        /// Builds the user's skin profile from the database.
+        /// Returns default values if the user is not found.
         /// </summary>
         private async Task<UserProfileData> GetUserProfileAsync(int userId)
         {
@@ -49,17 +48,16 @@ namespace CosmeticsEvaluator.Api.Controllers
 
             return new UserProfileData
             {
-                SkinType = user.SkinType,
+                SkinType    = user.SkinType,
                 MainConcern = user.MainConcern,
                 BudgetLevel = user.BudgetLevel
             };
         }
 
-
         /// <summary>
-        /// Evalueaza un produs introdus manual de utilizator.
-        /// Profilul din request este inlocuit cu profilul real al utilizatorului autentificat.
-        /// Salveaza rezultatul in istoricul de evaluari.
+        /// Evaluates a product submitted manually by the user.
+        /// The profile in the request is replaced with the authenticated user's real profile.
+        /// Saves the result to the evaluation history.
         /// </summary>
         [Authorize]
         [HttpPost]
@@ -73,20 +71,22 @@ namespace CosmeticsEvaluator.Api.Controllers
             try
             {
                 var result = await _mlService.GetPredictionAsync(request);
+                if (result == null)
+                    return StatusCode(502, "ML service returned an empty response.");
 
                 var entry = new EvaluationEntry
                 {
-                    UserId = userId.Value,
-                    ProductId = request.ProductId,
-                    Name = request.ProductId,
-                    Brand = "Manual Entry",
-                    ReviewScore = request.Data.review_score,
-                    NOfReviews = request.Data.n_of_reviews,
-                    NOfLoves = request.Data.n_of_loves,
+                    UserId        = userId.Value,
+                    ProductId     = request.ProductId,
+                    Name          = request.ProductId,
+                    Brand         = "Manual Entry",
+                    ReviewScore   = request.Data.review_score,
+                    NOfReviews    = request.Data.n_of_reviews,
+                    NOfLoves      = request.Data.n_of_loves,
                     PricePerOunce = request.Data.price_per_ounce,
-                    MlProbability = result.ProbabilitateML,
-                    FinalVerdict = result.VerdictFinal,
-                    CreatedAt = DateTime.Now
+                    MlProbability = result.MLProbability,
+                    FinalVerdict  = result.FinalVerdict,
+                    CreatedAt     = DateTime.Now
                 };
 
                 _context.EvaluationHistory.Add(entry);
@@ -95,19 +95,19 @@ namespace CosmeticsEvaluator.Api.Controllers
                 return Ok(new
                 {
                     OriginalResult = result,
-                    FinalVerdict = result.VerdictFinal,
-                    SavedAt = entry.CreatedAt
+                    FinalVerdict   = result.FinalVerdict,
+                    SavedAt        = entry.CreatedAt
                 });
             }
             catch (HttpRequestException ex)
             {
-                return StatusCode(502, $"Serviciul ML a returnat eroare: {ex.Message}");
+                return StatusCode(502, $"ML service returned an error: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Returneaza istoricul de evaluari al utilizatorului autentificat,
-        /// sortat descrescator dupa data.
+        /// Returns the evaluation history of the authenticated user,
+        /// sorted in descending order by date.
         /// </summary>
         [Authorize]
         [HttpGet("history")]
@@ -125,8 +125,8 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
 
         /// <summary>
-        /// Returneaza lista produselor din catalog (ID, brand, nume).
-        /// Folosit de frontend pentru afisarea listei de produse disponibile.
+        /// Returns the list of products from the catalog (ID, brand, name).
+        /// Used by the frontend to display the available product list.
         /// </summary>
         [Authorize]
         [HttpGet("products")]
@@ -140,9 +140,9 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
 
         /// <summary>
-        /// Evalueaza un produs din catalog după ID.
-        /// Preia datele complete ale produsului din baza de date,
-        /// aplica profilul real al utilizatorului si salvează rezultatul în istoric.
+        /// Evaluates a catalog product by ID.
+        /// Fetches the full product data from the database,
+        /// applies the authenticated user's real profile, and saves the result to history.
         /// </summary>
         [Authorize]
         [HttpPost("evaluate-by-id/{id}")]
@@ -153,7 +153,7 @@ namespace CosmeticsEvaluator.Api.Controllers
 
             var product = await _context.ProductCatalog.FindAsync(id);
             if (product == null)
-                return NotFound("Produsul nu a fost găsit în catalog.");
+                return NotFound("Product not found in catalog.");
 
             var userProfile = await GetUserProfileAsync(userId.Value);
 
@@ -162,26 +162,26 @@ namespace CosmeticsEvaluator.Api.Controllers
                 ProductId = product.Id.ToString(),
                 Data = new ProductData
                 {
-                    review_score = product.ReviewScore,
-                    n_of_reviews = product.NOfReviews,
-                    n_of_loves = product.NOfLoves,
-                    price_per_ounce = product.PricePerOunce ?? 0,
-                    category_Anti_Aging = product.CategoryAntiAging,
-                    category_Acne_Treatments = product.CategoryAcneTreatments,
-                    category_Exfoliators = product.CategoryExfoliators,
-                    category_Eye_Treatments = product.CategoryEyeTreatments,
-                    category_Face_Masks = product.CategoryFaceMasks,
-                    category_Face_Oils = product.CategoryFaceOils,
-                    category_Face_Serums = product.CategoryFaceSerums,
-                    category_Face_Sunscreen = product.CategoryFaceSunscreen,
-                    category_Face_Wash = product.CategoryFaceWash,
-                    category_Facial_Peels = product.CategoryFacialPeels,
-                    category_Mists_Essences = product.CategoryMistsEssences,
+                    review_score                  = product.ReviewScore,
+                    n_of_reviews                  = product.NOfReviews,
+                    n_of_loves                    = product.NOfLoves,
+                    price_per_ounce               = product.PricePerOunce ?? 0,
+                    category_Anti_Aging           = product.CategoryAntiAging,
+                    category_Acne_Treatments      = product.CategoryAcneTreatments,
+                    category_Exfoliators          = product.CategoryExfoliators,
+                    category_Eye_Treatments       = product.CategoryEyeTreatments,
+                    category_Face_Masks           = product.CategoryFaceMasks,
+                    category_Face_Oils            = product.CategoryFaceOils,
+                    category_Face_Serums          = product.CategoryFaceSerums,
+                    category_Face_Sunscreen       = product.CategoryFaceSunscreen,
+                    category_Face_Wash            = product.CategoryFaceWash,
+                    category_Facial_Peels         = product.CategoryFacialPeels,
+                    category_Mists_Essences       = product.CategoryMistsEssences,
                     category_Moisturizer_Treatments = product.CategoryMoisturizerTreatments,
-                    category_Moisturizers = product.CategoryMoisturizers,
-                    category_Night_Creams = product.CategoryNightCreams,
-                    category_Toners = product.CategoryToners,
-                    category_Blotting_Papers = product.CategoryBlottingPapers
+                    category_Moisturizers         = product.CategoryMoisturizers,
+                    category_Night_Creams         = product.CategoryNightCreams,
+                    category_Toners               = product.CategoryToners,
+                    category_Blotting_Papers      = product.CategoryBlottingPapers
                 },
                 UserProfile = userProfile
             };
@@ -189,21 +189,23 @@ namespace CosmeticsEvaluator.Api.Controllers
             try
             {
                 var result = await _mlService.GetPredictionAsync(mlRequest);
+                if (result == null)
+                    return StatusCode(502, "ML service returned an empty response.");
 
                 var entry = new EvaluationEntry
                 {
-                    UserId = userId.Value,
-                    ProductId = product.Name,
-                    Name = product.Name,
-                    Brand = product.Brand,
-                    ReviewScore = product.ReviewScore,
-                    NOfReviews = product.NOfReviews,
-                    NOfLoves = product.NOfLoves,
-                    Price = product.Price,
+                    UserId        = userId.Value,
+                    ProductId     = product.Name,
+                    Name          = product.Name,
+                    Brand         = product.Brand,
+                    ReviewScore   = product.ReviewScore,
+                    NOfReviews    = product.NOfReviews,
+                    NOfLoves      = product.NOfLoves,
+                    Price         = product.Price,
                     PricePerOunce = product.PricePerOunce ?? 0,
-                    MlProbability = result.ProbabilitateML,
-                    FinalVerdict = result.VerdictFinal,
-                    CreatedAt = DateTime.Now
+                    MlProbability = result.MLProbability,
+                    FinalVerdict  = result.FinalVerdict,
+                    CreatedAt     = DateTime.Now
                 };
 
                 _context.EvaluationHistory.Add(entry);
@@ -212,13 +214,13 @@ namespace CosmeticsEvaluator.Api.Controllers
                 return Ok(new
                 {
                     OriginalResult = result,
-                    FinalVerdict = result.VerdictFinal,
-                    ProductInfo = new { product.Brand, product.Name, product.Price }
+                    FinalVerdict   = result.FinalVerdict,
+                    ProductInfo    = new { product.Brand, product.Name, product.Price }
                 });
             }
             catch (HttpRequestException ex)
             {
-                return StatusCode(502, $"Serviciul ML a returnat eroare: {ex.Message}");
+                return StatusCode(502, $"ML service returned an error: {ex.Message}");
             }
         }
     }

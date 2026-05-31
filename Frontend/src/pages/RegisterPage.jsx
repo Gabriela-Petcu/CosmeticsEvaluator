@@ -100,7 +100,6 @@ const handleGoogleRegister = useGoogleLogin({
 
       localStorage.setItem('skiniq_token', token)
 
-      // Setăm profilul ales în formular
       try {
         await updateProfile(skinType, mainConcern, budgetLevel)
       } catch {}

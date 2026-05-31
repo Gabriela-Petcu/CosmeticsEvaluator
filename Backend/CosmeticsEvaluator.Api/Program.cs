@@ -28,7 +28,7 @@ builder.Services.AddSwaggerGen(c =>
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Introduceți token-ul JWT astfel: Bearer {tokenul_tau}",
+        Description = "Enter the JWT token as: Bearer {your_token}",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -109,9 +109,9 @@ app.Run();
 
 
 /// <summary>
-/// Importa produsele din CSV in baza de date la prima pornire.
-/// Cauta fisierul in mai multe locatii pentru compatibilitate local/productie.
-/// Nu face nimic daca datele sunt deja in catalog.
+/// Imports products from the CSV file into the database on first startup.
+/// Searches for the file in multiple locations for local/production compatibility.
+/// Does nothing if the catalog already contains data.
 /// </summary>
 void SeedDatabase(AppDbContext context, string contentRootPath)
 {
@@ -127,11 +127,11 @@ void SeedDatabase(AppDbContext context, string contentRootPath)
     var path = possiblePaths.FirstOrDefault(File.Exists);
     if (path == null)
     {
-        Console.WriteLine("CSV nu a fost găsit în nicio cale.");
+        Console.WriteLine("CSV not found in any location.");
         return;
     }
 
-    Console.WriteLine($"Cale CSV găsită: {path}");
+    Console.WriteLine($"Found CSV path: {path}");
 
     try
     {
@@ -144,10 +144,10 @@ void SeedDatabase(AppDbContext context, string contentRootPath)
         context.ProductCatalog.AddRange(records);
         context.SaveChanges();
 
-        Console.WriteLine($"Import finalizat: {records.Count} produse importate.");
+        Console.WriteLine($"Import completed: {records.Count} products imported.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Eroare la import CSV: {ex.Message}");
+        Console.WriteLine($"Error occurred while importing CSV: {ex.Message}");
     }
 }

@@ -19,20 +19,25 @@ from Src.recommendation import build_final_recommendation
 
 @dataclass
 class FullPipelineResult:
-    ScorFinal: float
-    Merita: int
-    MeritaML: int
-    ProbabilitateML: float
+    """
+    Final output of the complete product evaluation pipeline, including:
+    """
+    FinalScore: float
+    IsRecommended: int
+    IsRecommendedML: int
+    MLProbability: float
     FitScore: int
-    SePotriveste: int
-    VerdictFinal: str
-    ExplicatieFinala: str
-    MotivePozitive: list[str]
-    MotiveNegative: list[str]
+    IsCompatible: int
+    FinalVerdict: str
+    FinalExplanation: str
+    PositiveSignals: list[str]
+    NegativeSignals: list[str]
 
 
 @dataclass
 class PipelineResponse:
+    """
+    Structured response for the product evaluation pipeline, designed for backend/frontend communication."""
     status: str
     message: str
     missing_fields: list[str]
@@ -46,7 +51,7 @@ def _normalize_product_input(product: dict[str, Any] | pd.Series) -> pd.DataFram
     elif isinstance(product, pd.Series):
         product_series = product.copy()
     else:
-        raise TypeError("product trebuie să fie dict sau pandas.Series")
+        raise TypeError("product must be a dict or pandas.Series")
 
     return pd.DataFrame([product_series.to_dict()])
 
@@ -56,22 +61,16 @@ def evaluate_product_for_user(
     user_profile: UserProfile
 ) -> PipelineResponse:
     """
-    Rulează flow-ul complet al aplicației:
-
-    1. baseline scoring
-    2. clasificare ML
-    3. user matching
-    4. verdict final de recomandare
-
-    Dacă produsul nu are date suficiente pentru baseline, funcția NU forțează
-    o evaluare incompletă. În schimb, returnează un răspuns structurat,
-    potrivit pentru backend/frontend.
+    Runs the complete application flow:
+    1. Baseline scoring (FinalScore + IsRecommended)
+    2. ML classification (IsRecommendedML + MLProbability)
+    3. User matching (FitScore + IsCompatible + PositiveSignals + NegativeSignals)
+    4. Final recommendation verdict (FinalVerdict + FinalExplanation)
     """
     if not isinstance(user_profile, UserProfile):
         raise TypeError(
-            f"user_profile trebuie să fie instanță UserProfile, nu {type(user_profile).__name__}"
+            f"user_profile must be an instance of UserProfile, not {type(user_profile).__name__}"
         )
-    #normalizare+validare
     product_df = _normalize_product_input(product)
     baseline_report = inspect_baseline_input(product_df)
 
@@ -90,8 +89,8 @@ def evaluate_product_for_user(
         return PipelineResponse(
             status="insufficient_data",
             message=(
-                "Produsul nu poate fi evaluat complet deoarece lipsesc date necesare "
-                "pentru componenta baseline."
+                "Product cannot be fully evaluated because required data is missing "
+                "for the baseline component."
             ),
             missing_fields=missing_fields,
             invalid_fields=[],
@@ -102,8 +101,7 @@ def evaluate_product_for_user(
         return PipelineResponse(
             status="invalid_input",
             message=(
-                "Produsul nu poate fi evaluat deoarece unele câmpuri necesare pentru "
-                "baseline conțin valori invalide."
+                "Product cannot be evaluated because some fields have invalid values "
             ),
             missing_fields=[],
             invalid_fields=invalid_fields,
@@ -112,59 +110,56 @@ def evaluate_product_for_user(
 
     bundle = load_bundle()
 
-    #calculeaza scorul de baza
     baseline_df = prepare_baseline_dataframe(product_df, bundle)
     if baseline_df.empty:
         return PipelineResponse(
             status="insufficient_data",
             message=(
-                "Produsul nu poate fi evaluat complet deoarece componenta baseline "
-                "nu a putut calcula un scor final valid."
+                "Product could not be fully evaluated because the baseline scoring step failed to produce a valid FinalScore. "
+                "This may be due to missing or invalid input data that was not caught in the initial inspection."
             ),
-            missing_fields=["ScorFinal"],
+            missing_fields=["FinalScore"],
             invalid_fields=[],
             result=None,
         )
 
-    #pregateste datele pt ai
     ml_df = prepare_ml_dataframe(baseline_df)
-    #parere ai
     full_df = add_ml_predictions(ml_df, bundle)
 
     if full_df.empty:
         return PipelineResponse(
             status="processing_error",
-            message="Produsul nu a putut fi procesat complet pentru inferență.",
+            message="Product could not be fully evaluated because the machine learning step failed to produce valid predictions. ",
+
             missing_fields=[],
             invalid_fields=[],
             result=None,
         )
 
-    #personalizarea
     product_row = full_df.iloc[0]
     match_result = match_product_to_user(user_profile, product_row)
 
     final_result = build_final_recommendation(
-        merita=int(product_row["Merita"]),
-        merita_ml=int(product_row["MeritaML"]),
-        se_potriveste=match_result.SePotriveste
+        is_recommended=int(product_row["IsRecommended"]),
+        is_recommended_ml=int(product_row["IsRecommendedML"]),
+        is_compatible=match_result.IsCompatible
     )
 
     return PipelineResponse(
         status="ok",
-        message="Evaluarea produsului a fost realizată cu succes.",
+        message="Product evaluation completed successfully.",
         missing_fields=[],
         invalid_fields=[],
         result=FullPipelineResult(
-            ScorFinal=float(product_row["ScorFinal"]),
-            Merita=int(product_row["Merita"]),
-            MeritaML=int(product_row["MeritaML"]),
-            ProbabilitateML=float(product_row["ProbabilitateML"]),
+            FinalScore=float(product_row["FinalScore"]),
+            IsRecommended=int(product_row["IsRecommended"]),
+            IsRecommendedML=int(product_row["IsRecommendedML"]),
+            MLProbability=float(product_row["MLProbability"]),
             FitScore=match_result.FitScore,
-            SePotriveste=match_result.SePotriveste,
-            VerdictFinal=final_result.verdict,
-            ExplicatieFinala=final_result.explanation,
-            MotivePozitive=match_result.PositiveSignals,
-            MotiveNegative=match_result.NegativeSignals,
+            IsCompatible=match_result.IsCompatible,
+            FinalVerdict=final_result.verdict,
+            FinalExplanation=final_result.explanation,
+            PositiveSignals=match_result.PositiveSignals,
+            NegativeSignals=match_result.NegativeSignals,
         ),
     )

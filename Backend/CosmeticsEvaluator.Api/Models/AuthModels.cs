@@ -2,17 +2,17 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CosmeticsEvaluator.Api.Models
 {
-    // Modele pentru autentificare și gestionarea profilului utilizatorului
+    // Models for authentication and user profile management
+ 
     public class RegisterRequest
     {
-        [Required(ErrorMessage = "Email-ul este obligatoriu.")]
-        [EmailAddress(ErrorMessage = "Formatul email-ului este invalid.")]
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Invalid email format.")]
         public string Email { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Parola este obligatorie.")]
-        [MinLength(8, ErrorMessage = "Parola trebuie să aibă cel puțin 8 caractere.")]
+        [Required(ErrorMessage = "Password is required.")]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
         [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$", 
-            ErrorMessage = "Parola trebuie să conțină o literă mare, una mică și o cifră.")]
+            ErrorMessage = "Password must contain an uppercase letter, a lowercase letter, and a digit.")]
         public string Password { get; set; } = string.Empty;
     }
 
@@ -30,10 +30,10 @@ public class UpdateProfileRequest
 
     public class LoginRequest
     {
-        [Required(ErrorMessage = "Email necesar.")]
+        [Required(ErrorMessage = "Email is required.")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Parolă necesară.")]
+        [Required(ErrorMessage = "Password is required.")]
         public string Password { get; set; } = string.Empty;
     }
 
@@ -56,7 +56,7 @@ public class ResetPasswordRequest
     [Required]
     [MinLength(8)]
     [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$",
-        ErrorMessage = "Parola trebuie să conțină o literă mare, una mică și o cifră.")]
+        ErrorMessage = "Password must contain an uppercase letter, a lowercase letter and a digit.")]
     public string NewPassword { get; set; } = string.Empty;
 }
 }

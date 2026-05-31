@@ -27,7 +27,6 @@ function getVerdictConfig(verdict) {
   return VERDICT_CONFIG.default
 }
 
-// Helper — citește câmpul indiferent de majuscule
 function g(obj, ...keys) {
   for (const key of keys) {
     if (obj[key] !== undefined && obj[key] !== null) return obj[key]
@@ -45,25 +44,24 @@ export default function ResultPage() {
     if (!saved) { navigate('/evaluate'); return }
     try {
       const parsed = JSON.parse(saved)
-      // Normalizăm — extragem originalResult dacă există
       const raw = parsed.originalResult || parsed.OriginalResult || parsed
       const productInfo = parsed.productInfo || parsed.ProductInfo || {}
 
       const normalized = {
-        ScorFinal: g(raw, 'scorFinal', 'ScorFinal') ?? 0,
-        Merita: g(raw, 'merita', 'Merita') ?? 0,
-        MeritaML: g(raw, 'meritaML', 'MeritaML') ?? 0,
-        ProbabilitateML: g(raw, 'probabilitateML', 'ProbabilitateML') ?? 0,
-        FitScore: g(raw, 'fitScore', 'FitScore') ?? 0,
-        SePotriveste: g(raw, 'sePotriveste', 'SePotriveste') ?? 0,
-        VerdictFinal: g(raw, 'verdictFinal', 'VerdictFinal') || '',
-        ExplicatieFinala: g(raw, 'explicatieFinala', 'ExplicatieFinala') || '',
-        MotivePozitive: g(raw, 'motivePozitive', 'MotivePozitive') || [],
-        MotiveNegative: g(raw, 'motiveNegative', 'MotiveNegative') || [],
-        TopFactoriML: g(raw, 'topFactoriML', 'TopFactoriML') || [],
+        FinalScore:      g(raw, 'finalScore',      'FinalScore')      ?? 0,
+        IsRecommended:   g(raw, 'isRecommended',   'IsRecommended')   ?? 0,
+        IsRecommendedML: g(raw, 'isRecommendedML', 'IsRecommendedML') ?? 0,
+        MLProbability:   g(raw, 'mlProbability',   'MLProbability')   ?? 0,
+        FitScore:        g(raw, 'fitScore',         'FitScore')        ?? 0,
+        IsCompatible:    g(raw, 'isCompatible',    'IsCompatible')    ?? 0,
+        FinalVerdict:    g(raw, 'finalVerdict',    'FinalVerdict')    || '',
+        FinalExplanation:g(raw, 'finalExplanation','FinalExplanation')|| '',
+        PositiveSignals: g(raw, 'positiveSignals', 'PositiveSignals') || [],
+        NegativeSignals: g(raw, 'negativeSignals', 'NegativeSignals') || [],
+        TopMLFactors:    g(raw, 'topMLFactors',    'TopMLFactors')    || [],
         productName: g(raw, 'productName') || g(productInfo, 'name', 'Name') || g(raw, 'productId') || 'Produs evaluat',
-brand: g(raw, 'brand') || g(productInfo, 'brand', 'Brand') || '',
-price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
+        brand: g(raw, 'brand') || g(productInfo, 'brand', 'Brand') || '',
+        price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
       }
       setResult(normalized)
     } catch {
@@ -79,10 +77,10 @@ price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
     )
   }
 
-  const vc = getVerdictConfig(result.VerdictFinal)
-  const scorePercent = Math.min(100, Math.max(0, result.ScorFinal))
-  const mlPercent = Math.round(result.ProbabilitateML * 100)
-  const fitPercent = Math.min(100, Math.max(0, result.FitScore))
+  const vc = getVerdictConfig(result.FinalVerdict)
+  const scorePercent = Math.min(100, Math.max(0, result.FinalScore))
+  const mlPercent    = Math.round(result.MLProbability * 100)
+  const fitPercent   = Math.min(100, Math.max(0, result.FitScore))
 
   return (
     <div>
@@ -113,10 +111,10 @@ price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
           <div className={`flex items-center gap-2 px-5 py-2.5 rounded-full border font-medium text-sm ${vc.badge}`}>
             <span>{vc.icon}</span>
-            {result.VerdictFinal}
+            {result.FinalVerdict}
           </div>
           <div className={`text-xs max-w-[220px] text-right leading-relaxed ${vc.color}`}>
-            {result.ExplicatieFinala}
+            {result.FinalExplanation}
           </div>
         </div>
       </div>
@@ -134,7 +132,7 @@ price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
               <div className="col-span-2 bg-rose-light border border-rose-border rounded-xl p-5">
                 <div className="text-xs font-medium tracking-widest text-soft mb-2">SCOR FINAL BASELINE</div>
                 <div className="font-serif text-5xl font-light text-rose-primary leading-none">
-                  {result.ScorFinal.toFixed(1)}
+                  {result.FinalScore.toFixed(1)}
                 </div>
                 <div className="mt-3 h-1.5 bg-rose-border rounded-full overflow-hidden">
                   <div className="h-full bg-rose-primary rounded-full transition-all"
@@ -177,15 +175,15 @@ price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
                 icon="📊" iconBg="bg-green-50"
                 title="Scor baseline"
                 desc="rating, recenzii, loves, preț/oz"
-                value={result.Merita === 1 ? 'merită' : 'nu merită'}
-                positive={result.Merita === 1}
+                value={result.IsRecommended === 1 ? 'merită' : 'nu merită'}
+                positive={result.IsRecommended === 1}
               />
               <ComponentRow
                 icon="🧠" iconBg="bg-blue-50"
                 title="Model ML"
                 desc="logistic regression · 9.000+ produse"
-                value={result.MeritaML === 1 ? 'merită' : 'nu merită'}
-                positive={result.MeritaML === 1}
+                value={result.IsRecommendedML === 1 ? 'merită' : 'nu merită'}
+                positive={result.IsRecommendedML === 1}
               />
               <ComponentRow
                 icon="👤" iconBg="bg-rose-light"
@@ -199,16 +197,16 @@ price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
           </div>
 
           {/* SHAP */}
-          {result.TopFactoriML && result.TopFactoriML.length > 0 && (
+          {result.TopMLFactors && result.TopMLFactors.length > 0 && (
             <div>
               <h2 className="section-title mb-4">Top factori ML (SHAP)</h2>
               <div className="flex flex-col gap-2">
-                {result.TopFactoriML.map((factor, i) => {
-                  const shapVal = g(factor, 'shap_value', 'shapValue') || 0
-                  const featVal = g(factor, 'feature_value', 'featureValue')
+                {result.TopMLFactors.map((factor, i) => {
+                  const shapVal  = g(factor, 'shap_value', 'shapValue') || 0
+                  const featVal  = g(factor, 'feature_value', 'featureValue')
                   const featName = g(factor, 'feature') || ''
                   const direction = g(factor, 'direction') || ''
-                  const isPositive = direction === 'creste_probabilitatea'
+                  const isPositive = direction === 'increases_probability'
                   const barWidth = Math.min(100, Math.abs(shapVal) * 300)
                   return (
                     <div key={i} className="flex items-center gap-3 p-3 border border-rose-border rounded-xl bg-white">
@@ -247,8 +245,8 @@ price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
                 <div className="text-xs font-medium tracking-widest text-green-700 mb-1">SEMNALE POZITIVE</div>
-                {result.MotivePozitive && result.MotivePozitive.length > 0 ? (
-                  result.MotivePozitive.map((m, i) => (
+                {result.PositiveSignals && result.PositiveSignals.length > 0 ? (
+                  result.PositiveSignals.map((m, i) => (
                     <div key={i} className="flex items-start gap-2 bg-green-50 rounded-lg p-2.5 text-xs text-green-800 leading-relaxed">
                       <span className="flex-shrink-0 mt-0.5">✓</span>{m}
                     </div>
@@ -259,8 +257,8 @@ price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
               </div>
               <div className="flex flex-col gap-2">
                 <div className="text-xs font-medium tracking-widest text-red-600 mb-1">SEMNALE NEGATIVE</div>
-                {result.MotiveNegative && result.MotiveNegative.length > 0 ? (
-                  result.MotiveNegative.map((m, i) => (
+                {result.NegativeSignals && result.NegativeSignals.length > 0 ? (
+                  result.NegativeSignals.map((m, i) => (
                     <div key={i} className="flex items-start gap-2 bg-red-50 rounded-lg p-2.5 text-xs text-red-800 leading-relaxed">
                       <span className="flex-shrink-0 mt-0.5">✗</span>{m}
                     </div>
@@ -271,31 +269,33 @@ price: g(raw, 'price') || g(productInfo, 'price', 'Price') || null,
               </div>
             </div>
           </div>
-          
-{/* Acțiuni */}
-<div>
-  <h2 className="section-title mb-4">Acțiuni</h2>
-  <div className="flex flex-col gap-3">
-    <a
-      href={`https://www.google.com/search?q=${encodeURIComponent(`buy ${result.brand || ''} ${result.productName || ''}`)}&tbm=shop`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="btn-primary flex items-center justify-center gap-2 py-3 text-xs">
-      🔍 unde cumpăr — Google Shopping
-    </a>
-    <Link to="/evaluate"
-      className="btn-outline flex items-center justify-center gap-2 py-2.5 text-xs text-center">
-      ← evaluează alt produs
-    </Link>
-  </div>
-</div>
+
+          {/* Acțiuni */}
+          <div>
+            <h2 className="section-title mb-4">Acțiuni</h2>
+            <div className="flex flex-col gap-3">
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(`buy ${result.brand || ''} ${result.productName || ''}`)}&tbm=shop`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary flex items-center justify-center gap-2 py-3 text-xs">
+                🔍 unde cumpăr — Google Shopping
+              </a>
+              <Link to="/evaluate"
+                className="btn-outline flex items-center justify-center gap-2 py-2.5 text-xs text-center">
+                ← evaluează alt produs
+              </Link>
+            </div>
+          </div>
+
           {/* Despre scor */}
           <div className="card bg-cream-warm">
             <div className="text-xs font-medium tracking-widest text-soft mb-3">DESPRE ACEST SCOR</div>
             <div className="flex flex-col gap-2 text-xs text-muted leading-relaxed">
-              <p><strong className="text-ink">Scorul baseline</strong> combină rating-ul, numărul de recenzii, loves și prețul/oz cu ponderi fixe: 50% rating, 20% recenzii, 20% loves, 10% preț.</p>
-              <p><strong className="text-ink">Modelul ML</strong> este un clasificator de regresie logistică antrenat pe 9.000+ produse Sephora.</p>
-              <p><strong className="text-ink">Compatibilitatea</strong> este calculată euristic pe baza tipului tău de ten, preocupării principale și bugetului.</p>
+              <p><strong className="text-ink">Scorul baseline</strong> 50% rating · 20% recenzii · 20% loves · 10% preț/oz.</p>
+              <p><strong className="text-ink">Modelul ML</strong> regresie logistică antrenată pe ~9.000 produse Sephora, 
+cu threshold la percentila 75 a scorului baseline.</p>
+              <p><strong className="text-ink">Compatibilitatea</strong> sistem euristic bazat pe reguli · tip ten, preocupare, buget.</p>
             </div>
           </div>
 

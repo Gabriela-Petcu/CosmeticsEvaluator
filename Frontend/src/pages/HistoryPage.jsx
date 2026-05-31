@@ -4,9 +4,9 @@ import { useAuth } from '../context/AuthContext'
 import { getHistory, deleteEvaluation, evaluateById, getProducts } from '../api/evaluate'
 
 const VERDICT_STYLES = {
-  'Recomandat': { border: 'border-green-200', bg: 'bg-green-50', badge: 'bg-green-100 text-green-800', score: 'text-green-600' },
-  'Nerecomandat': { border: 'border-red-200', bg: 'bg-red-50', badge: 'bg-red-100 text-red-800', score: 'text-red-500' },
-  default: { border: 'border-amber-200', bg: 'bg-amber-50', badge: 'bg-amber-100 text-amber-800', score: 'text-amber-600' },
+  'Recomandat':   { border: 'border-green-200', bg: 'bg-green-50', badge: 'bg-green-100 text-green-800', score: 'text-green-600' },
+  'Nerecomandat': { border: 'border-red-200',   bg: 'bg-red-50',   badge: 'bg-red-100 text-red-800',   score: 'text-red-500'   },
+  default:        { border: 'border-amber-200', bg: 'bg-amber-50', badge: 'bg-amber-100 text-amber-800', score: 'text-amber-600' },
 }
 
 function getStyle(verdict) {
@@ -17,15 +17,15 @@ export default function HistoryPage() {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
 
-  const [history, setHistory] = useState([])
-  const [filtered, setFiltered] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('toate')
-  const [sort, setSort] = useState('data')
-  const [selected, setSelected] = useState(null)
+  const [history, setHistory]         = useState([])
+  const [filtered, setFiltered]       = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [search, setSearch]           = useState('')
+  const [filter, setFilter]           = useState('toate')
+  const [sort, setSort]               = useState('data')
+  const [selected, setSelected]       = useState(null)
   const [reEvaluating, setReEvaluating] = useState(false)
-  const [deleteModal, setDeleteModal] = useState(null) // id-ul evaluării de șters
+  const [deleteModal, setDeleteModal] = useState(null)
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/login'); return }
@@ -50,13 +50,13 @@ export default function HistoryPage() {
         e.productId?.toLowerCase().includes(q)
       )
     }
-    if (filter === 'rec') result = result.filter(e => e.finalVerdict === 'Recomandat')
-    else if (filter === 'no') result = result.filter(e => e.finalVerdict === 'Nerecomandat')
+    if (filter === 'rec')   result = result.filter(e => e.finalVerdict === 'Recomandat')
+    else if (filter === 'no')    result = result.filter(e => e.finalVerdict === 'Nerecomandat')
     else if (filter === 'other') result = result.filter(e => e.finalVerdict !== 'Recomandat' && e.finalVerdict !== 'Nerecomandat')
 
-    if (sort === 'data') result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    if (sort === 'data')       result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     else if (sort === 'prob_desc') result.sort((a, b) => (b.mlProbability || 0) - (a.mlProbability || 0))
-    else if (sort === 'prob_asc') result.sort((a, b) => (a.mlProbability || 0) - (b.mlProbability || 0))
+    else if (sort === 'prob_asc')  result.sort((a, b) => (a.mlProbability || 0) - (b.mlProbability || 0))
 
     setFiltered(result)
   }, [search, filter, sort, history])
@@ -99,21 +99,22 @@ export default function HistoryPage() {
         navigate('/result/latest')
         return
       }
+
       const partial = {
-        scorFinal: 0,
-        merita: selected.finalVerdict === 'Recomandat' ? 1 : 0,
-        meritaML: selected.finalVerdict === 'Recomandat' ? 1 : 0,
-        probabilitateML: selected.mlProbability || 0,
-        fitScore: 0,
-        sePotriveste: 0,
-        verdictFinal: selected.finalVerdict || '',
-        explicatieFinala: '',
-        motivePozitive: [],
-        motiveNegative: [],
-        topFactoriML: [],
-        productName: selected.name || selected.productId,
-        brand: selected.brand || '',
-        price: selected.price || null,
+        FinalScore:       0,
+        IsRecommended:    selected.finalVerdict === 'Recomandat' ? 1 : 0,
+        IsRecommendedML:  selected.finalVerdict === 'Recomandat' ? 1 : 0,
+        MLProbability:    selected.mlProbability || 0,
+        FitScore:         0,
+        IsCompatible:     0,
+        FinalVerdict:     selected.finalVerdict || '',
+        FinalExplanation: '',
+        PositiveSignals:  [],
+        NegativeSignals:  [],
+        TopMLFactors:     [],
+        productName:      selected.name || selected.productId,
+        brand:            selected.brand || '',
+        price:            selected.price || null,
       }
       sessionStorage.setItem('skiniq_result', JSON.stringify(partial))
       navigate('/result/latest')
@@ -124,8 +125,8 @@ export default function HistoryPage() {
     }
   }
 
-  const recCount = history.filter(h => h.finalVerdict === 'Recomandat').length
-  const noCount = history.filter(h => h.finalVerdict === 'Nerecomandat').length
+  const recCount   = history.filter(h => h.finalVerdict === 'Recomandat').length
+  const noCount    = history.filter(h => h.finalVerdict === 'Nerecomandat').length
   const otherCount = history.length - recCount - noCount
 
   return (
@@ -149,8 +150,7 @@ export default function HistoryPage() {
                 className="flex items-center justify-center gap-2 py-3 px-6 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors cursor-pointer">
                 🗑️ da, șterge evaluarea
               </button>
-              <button onClick={() => setDeleteModal(null)}
-                className="btn-outline py-3">
+              <button onClick={() => setDeleteModal(null)} className="btn-outline py-3">
                 nu, păstrează-o
               </button>
             </div>
@@ -172,10 +172,10 @@ export default function HistoryPage() {
         </div>
         <div className="flex gap-3">
           {[
-            { num: history.length, label: 'evaluate', color: 'text-rose-primary' },
-            { num: recCount, label: 'recomandate', color: 'text-green-600' },
-            { num: noCount, label: 'nerecomandate', color: 'text-red-500' },
-            { num: otherCount, label: 'incerte', color: 'text-amber-600' },
+            { num: history.length, label: 'evaluate',      color: 'text-rose-primary' },
+            { num: recCount,       label: 'recomandate',   color: 'text-green-600'    },
+            { num: noCount,        label: 'nerecomandate', color: 'text-red-500'      },
+            { num: otherCount,     label: 'incerte',       color: 'text-amber-600'    },
           ].map(s => (
             <div key={s.label} className="bg-rose-light border border-rose-border rounded-xl px-5 py-3 text-center">
               <div className={`font-serif text-2xl font-light ${s.color}`}>{s.num}</div>
@@ -195,10 +195,10 @@ export default function HistoryPage() {
         />
         <div className="flex gap-2">
           {[
-            { id: 'toate', label: 'toate' },
-            { id: 'rec', label: 'recomandate' },
-            { id: 'no', label: 'nerecomandate' },
-            { id: 'other', label: 'incerte' },
+            { id: 'toate', label: 'toate'         },
+            { id: 'rec',   label: 'recomandate'   },
+            { id: 'no',    label: 'nerecomandate' },
+            { id: 'other', label: 'incerte'       },
           ].map(f => (
             <button key={f.id} onClick={() => setFilter(f.id)}
               className={`text-xs px-4 py-1.5 rounded-full border transition-colors cursor-pointer

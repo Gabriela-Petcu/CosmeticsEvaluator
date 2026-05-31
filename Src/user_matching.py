@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 """
-Modul euristic de potrivire produs-utilizator.
-
-Scorul de compatibilitate este calculat pe baza unor reguli definite manual,
-inspirate de caracteristici generale ale produselor și de profilul utilizatorului.
+Heuristic product-to-user matching module.
+The compatibility score is computed using manually defined rules
+inspired by general product characteristics and the user profile.
 
 """
 
@@ -38,8 +37,8 @@ CATEGORY_COLUMNS = {
 
 @dataclass
 class MatchResult:
-    FitScore: int #scor final
-    SePotriveste: int #1 sau 0 = verdict
+    FitScore: int 
+    IsCompatible: int 
     PositiveSignals: list[str]
     NegativeSignals: list[str]
 
@@ -276,15 +275,12 @@ CONCERN_RULES = {
 }
 
 
-# Verifică dacă produsul aparține unei categorii.
 def _get_category(product: pd.Series, key: str) -> int:
     col = CATEGORY_COLUMNS[key]
     if col not in product.index:
         return 0
     return int(product.get(col, 0))
 
-
-# Verifică dacă denumirea produsului conține unul dintre keyword-urile date.
 def _name_contains(product_name: str, keywords: list[str]) -> bool:
     name = (product_name or "").lower()
     return any(keyword in name for keyword in keywords)
@@ -313,6 +309,26 @@ def _apply_category_rules(
     reasons_neg: list[str],
     rules: list[dict[str, Any]],
 ) -> int:
+    """
+    Apply a list of category-based rules to the score.
+    Each rule checks whether the product belongs to any of the specified
+    categories and adjusts the score accordingly.
+ 
+    Parameters
+    product : pd.Series
+        Product data with category indicator columns.
+    score : int
+        Current compatibility score.
+    reasons_pos : list[str]
+        Accumulator for positive signal messages.
+    reasons_neg : list[str]
+        Accumulator for negative signal messages.
+    rules : list[dict]
+        List of rule dicts with keys: 'keys', 'score', 'message', 'positive'.
+    
+    Returns
+    int: Updated score after applying the category rules.
+    """
     for rule in rules:
         if any(_get_category(product, key) for key in rule["keys"]):
             score += rule["score"]
@@ -327,6 +343,12 @@ def _apply_keyword_rules(
     reasons_neg: list[str],
     rules: list[dict[str, Any]],
 ) -> int:
+    """
+    Apply a list of keyword-based rules to the score.
+    
+    Return:
+    int: Updated score after applying the keyword rules.
+    """
     for rule in rules:
         if _name_contains(product_name, rule["keywords"]):
             score += rule["score"]
@@ -340,6 +362,9 @@ def _apply_base_adjustment(
     reasons_neg: list[str],
     adjustment: dict[str, Any] | None,
 ) -> int:
+    """
+    Apply an optional flat score adjustment (e.g. for skin types with broad compatibility).
+    """
     if adjustment is None:
         return score
 
@@ -354,7 +379,10 @@ def _apply_skin_type_rules(
     score: int,
     reasons_pos: list[str],
     reasons_neg: list[str]
-) -> int:
+) -> int: 
+    """
+    Adjust the score based on the user's skin type using SKIN_TYPE_RULES.
+    """
     name = str(product.get("name", ""))
     rules = SKIN_TYPE_RULES.get(profile.skin_type)
 
@@ -392,6 +420,9 @@ def _apply_concern_rules(
     reasons_pos: list[str],
     reasons_neg: list[str]
 ) -> int:
+    """
+    Adjust the score based on the user's main skin concern using CONCERN_RULES.
+    """
     name = str(product.get("name", ""))
     rules = CONCERN_RULES.get(profile.main_concern)
 
@@ -423,10 +454,12 @@ def _apply_budget_rules(
     reasons_pos: list[str],
     reasons_neg: list[str]
 ) -> int:
+    """
+    Adjust the score based on the user's budget level and the product's price.
+    """
     price = product.get("price", None)
     price_per_ounce = product.get("price_per_ounce", None)
 
-    # Adaugă o verificare la începutul funcției
     if pd.isna(price) or price <= 0:
         score -= 5 
         reasons_neg.append("Preț indisponibil pentru verificare buget.")
@@ -469,15 +502,15 @@ def _apply_budget_rules(
 
 def match_product_to_user(profile: UserProfile, product: pd.Series | dict[str, Any]) -> MatchResult:
     """
-    Evaluează compatibilitatea dintre un produs și profilul utilizatorului
-    folosind un sistem euristic de reguli.
-
-    Scorul pornește de la 50 și este ajustat pe baza:
-    - tipului de ten
-    - preocupării principale
-    - nivelului de buget
-
-    Verdictul binar SePotriveste este obținut prin pragul euristic FitScore >= 60.
+    Evaluate the compatibility between a product and a user profile
+    using a heuristic rule-based system.
+ 
+    The score starts at 50 and is adjusted based on:
+    - skin type rules (SKIN_TYPE_RULES)
+    - main concern rules (CONCERN_RULES)
+    - budget rules
+ 
+    The binary IsCompatible verdict is derived by thresholding: FitScore >= 60.
     """
     if isinstance(product, dict):
         product = pd.Series(product)
@@ -495,11 +528,11 @@ def match_product_to_user(profile: UserProfile, product: pd.Series | dict[str, A
     score = _apply_budget_rules(profile, product, score, reasons_pos, reasons_neg)
 
     score = max(0, min(100, score))
-    se_potriveste = 1 if score >= 60 else 0
+    is_compatible = 1 if score >= 60 else 0
 
     return MatchResult(
         FitScore=score,
-        SePotriveste=se_potriveste,
+        IsCompatible=is_compatible,
         PositiveSignals=reasons_pos,
         NegativeSignals=reasons_neg
     )

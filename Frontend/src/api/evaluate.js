@@ -10,12 +10,10 @@ export const evaluateById = async (productId) => {
   const result = data.originalResult || data.OriginalResult || data
   const productInfo = data.productInfo || data.ProductInfo || {}
 
-  // Îmbogățim result cu info produs
   result.productName = productInfo.name || productInfo.Name || result.productName || 'Produs evaluat'
   result.brand = productInfo.brand || productInfo.Brand || result.brand || ''
   result.price = productInfo.price || productInfo.Price || result.price || null
 
-  // Păstrăm și productInfo separat pentru ResultPage
   result.productInfo = productInfo
 
   return { data: result }

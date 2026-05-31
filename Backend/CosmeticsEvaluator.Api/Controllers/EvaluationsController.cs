@@ -7,8 +7,8 @@ using System.Security.Claims;
 namespace CosmeticsEvaluator.Api.Controllers
 {
     /// <summary>
-    /// Controller pentru gestionarea istoricului de evaluari.
-    /// Utilizatorii pot sterge doar evaluarile proprii.
+    /// Controller for managing evaluation history.
+    /// Users can only delete their own evaluations.
     /// </summary>
     [Authorize]
     [ApiController]
@@ -23,8 +23,8 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
 
         /// <summary>
-        /// Sterge o evaluare din istoricul utilizatorului autentificat.
-        /// Un utilizator nu poate sterge evaluarile altui utilizator.
+        /// Deletes an evaluation from the authenticated user's history.
+        /// A user cannot delete evaluations of another user.
         /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
@@ -35,15 +35,15 @@ namespace CosmeticsEvaluator.Api.Controllers
 
             var evaluation = await _context.EvaluationHistory.FindAsync(id);
             if (evaluation == null)
-                return NotFound("Evaluarea nu a fost găsită.");
+                return NotFound("The evaluation was not found.");
 
             if (evaluation.UserId != userId)
-                return Forbid("Nu ai permisiunea să ștergi această evaluare.");
+                return Forbid("You do not have permission to delete this evaluation.");
 
             _context.EvaluationHistory.Remove(evaluation);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Evaluare ștearsă cu succes!" });
+            return Ok(new { message = "Evaluation deleted successfully!" });
         }
     }
 }

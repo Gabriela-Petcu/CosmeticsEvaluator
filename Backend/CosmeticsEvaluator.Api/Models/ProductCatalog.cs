@@ -1,6 +1,7 @@
 namespace CosmeticsEvaluator.Api.Models
 {
-    //modelul pentru stocarea catalogului de produse, care poate fi folosit pentru a popula baza de date și a oferi informații detaliate despre produse în timpul evaluării
+    //Model for storing the product catalog. Used to populate the database
+    //and provide detailed product data during evaluation.
     public class ProductCatalog
     {
         public int Id { get; set; }

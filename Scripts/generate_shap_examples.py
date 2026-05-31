@@ -6,25 +6,32 @@ from Src.inference import build_baseline_ml_analysis_df, load_bundle
 
 
 def pick_examples(df: pd.DataFrame) -> pd.DataFrame:
-    good_df = df[(df["Merita"] == 1) & (df["MeritaML"] == 1)].copy()
+    """
+    Select three representative products from the full dataset:
+    - one clearly good product (IsRecommended == 1 and IsRecommendedML == 1)
+    - one clearly weak product (IsRecommended == 0 and IsRecommendedML == 0)
+    - one interesting edge case (disagreement between baseline and ML,
+      or the closest product to the scoring threshold)
+    """
+    good_df = df[(df["IsRecommended"] == 1) & (df["IsRecommendedML"] == 1)].copy()
     good_df = good_df.sort_values(
-        by=["ProbabilitateML", "ScorFinal"],
+        by=["MLProbability", "FinalScore"],
         ascending=[False, False]
     )
     good_example = good_df.head(1)
 
-    weak_df = df[(df["Merita"] == 0) & (df["MeritaML"] == 0)].copy()
+    weak_df = df[(df["IsRecommended"] == 0) & (df["IsRecommendedML"] == 0)].copy()
     weak_df = weak_df.sort_values(
-        by=["ProbabilitateML", "ScorFinal"],
+        by=["MLProbability", "FinalScore"],
         ascending=[True, True]
     )
     weak_example = weak_df.head(1)
 
-    disagreement_df = df[df["Disagreement"]].copy()
+    disagreement_df = df[df["HasDisagreement"]].copy()
 
     if not disagreement_df.empty:
         interesting_df = disagreement_df.sort_values(
-            by=["ProbabilitateML", "DistanceToThreshold"],
+            by=["MLProbability", "DistanceToThreshold"],
             ascending=[False, True]
         )
         interesting_example = interesting_df.head(1)
@@ -45,7 +52,7 @@ def build_explanations_table(examples_df: pd.DataFrame) -> pd.DataFrame:
         explanation = explain_product(product_input)
         explanation_dict = explanation_to_dict(explanation)
 
-        top_factors = explanation_dict["TopFactoriML"]
+        top_factors = explanation_dict["TopMLFactors"]
 
         rows.append({
             "brand": row.get("brand", ""),
@@ -55,10 +62,10 @@ def build_explanations_table(examples_df: pd.DataFrame) -> pd.DataFrame:
             "n_of_reviews": row.get("n_of_reviews", None),
             "n_of_loves": row.get("n_of_loves", None),
             "review_score": row.get("review_score", None),
-            "ScorFinal": explanation_dict["ScorFinal"],
-            "Merita": explanation_dict["Merita"],
-            "MeritaML": explanation_dict["MeritaML"],
-            "ProbabilitateML": explanation_dict["ProbabilitateML"],
+            "FinalScore": explanation_dict["FinalScore"],
+            "IsRecommended": explanation_dict["IsRecommended"],
+            "IsRecommendedML": explanation_dict["IsRecommendedML"],
+            "MLProbability": explanation_dict["MLProbability"],
             "TopFactor1": top_factors[0]["feature"] if len(top_factors) > 0 else None,
             "TopFactor1Direction": top_factors[0]["direction"] if len(top_factors) > 0 else None,
             "TopFactor1SHAP": top_factors[0]["shap_value"] if len(top_factors) > 0 else None,
@@ -80,8 +87,8 @@ def main():
     bundle = load_bundle()
     threshold = float(bundle["threshold"])
 
-    full_df["Disagreement"] = full_df["Merita"] != full_df["MeritaML"]
-    full_df["DistanceToThreshold"] = (full_df["ScorFinal"] - threshold).abs()
+    full_df["Disagreement"] = full_df["IsRecommended"] != full_df["IsRecommendedML"]
+    full_df["DistanceToThreshold"] = (full_df["FinalScore"] - threshold).abs()
 
     print("Selecting representative examples...")
     examples_df = pick_examples(full_df)
@@ -93,7 +100,7 @@ def main():
     output_path = PROCESSED_DIR / "shap_examples.csv"
     explanations_df.to_csv(output_path, index=False)
 
-    print("\n=== SHAP EXAMPLES ===")
+    print("\nSHAP EXAMPLES")
     print(explanations_df.to_string(index=False))
     print(f"\n Saved to: {output_path}")
 

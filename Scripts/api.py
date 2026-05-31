@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    FastAPI lifespan handler.
+    Warms up the SHAP background data cache at startup so the first
+    request does not incur the loading overhead.
+    """
     bundle = load_bundle()
     preprocessor = bundle["full_system"].named_steps["preprocessor"]
     _get_background_data(preprocessor)
@@ -61,12 +66,18 @@ class ProductData(BaseModel):
 
 
 class UserProfileData(BaseModel):
+    """
+    Pydantic schema for user profile input.
+    """
     skin_type: str
     main_concern: str
     budget_level: str
 
 
 class EvaluationRequest(BaseModel):
+    """
+    Pydantic schema for the full evaluation request payload.
+    """
     product_id: str
     data: ProductData
     user_profile: UserProfileData | None = None
@@ -74,6 +85,11 @@ class EvaluationRequest(BaseModel):
 
 @app.post("/evaluate")
 async def evaluate_product(request: EvaluationRequest):
+    """
+    Evaluate a cosmetic product for a given user profile.
+    Runs the full pipeline: baseline scoring → ML classification →
+    user matching → final recommendation verdict.
+    """
     try:
         if request.user_profile:
             profile = UserProfile(

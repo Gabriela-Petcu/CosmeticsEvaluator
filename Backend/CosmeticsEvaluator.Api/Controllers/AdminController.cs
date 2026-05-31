@@ -8,8 +8,8 @@ using System.Security.Claims;
 namespace CosmeticsEvaluator.Api.Controllers
 {
     /// <summary>
-    /// Controller pt operatiunile administrative.
-    /// Accesibil doar utilizatorilor cu rolul Admin.
+    /// Controller for administrative operations.
+    /// Accessible only to users with the Admin role.
     /// </summary>
     [Authorize(Roles = "Admin")]
     [ApiController]
@@ -25,8 +25,8 @@ namespace CosmeticsEvaluator.Api.Controllers
 
 
         /// <summary>
-        /// Returneaza statistici globale: nr utilizatori, evaluari, produse,
-        /// distributia verdictelor, evaluarile recente si produsele cel mai evaluate.
+        /// Returns global statistics: user count, evaluation count, product count,
+        /// verdict distribution, recent evaluations, and most-evaluated products.
         /// </summary>
         [HttpGet("stats")]
         public async Task<IActionResult> GetStats()
@@ -71,7 +71,7 @@ namespace CosmeticsEvaluator.Api.Controllers
 
 
         /// <summary>
-        /// Returneaza lista tuturor utilizatorilor cu informatii despre profil si nr de evaluari.
+        /// Returns a list of all users with profile information and evaluation count.
         /// </summary>
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers()
@@ -95,55 +95,55 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
 
         /// <summary>
-        /// Actualizeaza rolul unui utilizator. Un admin nu isi poate schimba propriul rol.
+        /// Updates the role of a user. An admin cannot change their own role.
         /// </summary>
         [HttpPut("users/{id}/role")]
         public async Task<IActionResult> UpdateUserRole(int id, [FromBody] UpdateRoleRequest request)
         {
             var allowedRoles = new[] { "User", "Admin" };
             if (!allowedRoles.Contains(request.Role))
-                return BadRequest("Rol invalid. Valori permise: User, Admin");
+                return BadRequest("Invalid role. Allowed values: User, Admin");
 
             var user = await _context.Users.FindAsync(id);
             if (user == null)
-                return NotFound("Utilizatorul nu a fost găsit.");
+                return NotFound("User not found.");
 
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             if (user.Id == currentUserId)
-                return BadRequest("Nu îți poți schimba propriul rol.");
+                return BadRequest("You cannot change your own role.");
 
             user.Role = request.Role;
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = $"Rolul utilizatorului {user.Email} a fost schimbat în {request.Role}." });
+            return Ok(new { message = $"Role of user {user.Email} has been changed to {request.Role}." });
         }
 
         /// <summary>
-        /// Sterge un utilizator si toate evaluarile asociate acestuia.
-        /// Un admin nu isi poate sterge propriul cont.
+        /// Deletes a user and all evaluations associated with them.
+        /// An admin cannot delete their own account.
         /// </summary>
         [HttpDelete("users/{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             if (id == currentUserId)
-                return BadRequest("Nu îți poți șterge propriul cont din panoul de admin.");
+                return BadRequest("You cannot delete your own account.");
 
             var user = await _context.Users.FindAsync(id);
             if (user == null)
-                return NotFound("Utilizatorul nu a fost găsit.");
+                return NotFound("User not found.");
 
             var evaluations = _context.EvaluationHistory.Where(e => e.UserId == id);
             _context.EvaluationHistory.RemoveRange(evaluations);
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = $"Utilizatorul {user.Email} a fost șters." });
+            return Ok(new { message = $"User {user.Email} has been deleted." });
         }
 
 
         /// <summary>
-        /// Returneaza produsele din catalog cu suport pentru paginare si cautare dupa nume sau brand.
+        ///  Returns products from the catalog with pagination and search by name or brand.
         /// </summary>
         [HttpGet("products")]
         public async Task<IActionResult> GetProducts(
@@ -167,25 +167,25 @@ namespace CosmeticsEvaluator.Api.Controllers
         }
 
         /// <summary>
-        /// Adauga un produs nou in catalog.
+        /// Adds a new product to the catalog.
         /// </summary>
         [HttpPost("products")]
         public async Task<IActionResult> AddProduct([FromBody] ProductCatalog product)
         {
             _context.ProductCatalog.Add(product);
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Produs adăugat cu succes!", id = product.Id });
+            return Ok(new { message = "Product added successfully!", id = product.Id });
         }
 
         /// <summary>
-        /// Actualizeaza informatiile de baza ale unui produs existent.
+        /// Updates the basic information of an existing product.
         /// </summary>
         [HttpPut("products/{id}")]
         public async Task<IActionResult> UpdateProduct(int id, [FromBody] ProductCatalog updated)
         {
             var product = await _context.ProductCatalog.FindAsync(id);
             if (product == null)
-                return NotFound("Produsul nu a fost găsit.");
+                return NotFound("Product not found.");
 
             product.Brand = updated.Brand;
             product.Name = updated.Name;
@@ -196,27 +196,27 @@ namespace CosmeticsEvaluator.Api.Controllers
             product.PricePerOunce = updated.PricePerOunce;
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Produs actualizat cu succes!" });
+            return Ok(new { message = "Product updated successfully!" });
         }
 
         /// <summary>
-        /// Sterge un produs din catalog.
+        /// Deletes a product from the catalog.
         /// </summary>
         [HttpDelete("products/{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             var product = await _context.ProductCatalog.FindAsync(id);
             if (product == null)
-                return NotFound("Produsul nu a fost găsit.");
+                return NotFound("Product not found.");
 
             _context.ProductCatalog.Remove(product);
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Produs șters din catalog." });
+            return Ok(new { message = "Product deleted from catalog." });
         }
     }
 
     /// <summary>
-    /// Model pentru cererea de actualizare a rolului unui utilizator.
+    /// Request model for updating a user's role. The role must be either "User" or "Admin".
     /// </summary>
     public class UpdateRoleRequest
     {

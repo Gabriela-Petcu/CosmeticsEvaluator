@@ -3,7 +3,8 @@ using CosmeticsEvaluator.Api.Models;
 
 public class ProductCatalogMap : ClassMap<ProductCatalog>
 {
-    // Această clasă definește cum să mapăm coloanele din fișierul CSV la proprietățile clasei ProductCatalog, folosind CsvHelper pentru a facilita importul datelor din CSV în baza de date
+    // Defines how CSV columns map to ProductCatalog properties,
+    // using CsvHelper to facilitate importing product data from CSV into the database.
     public ProductCatalogMap()
     {
         Map(m => m.Brand).Name("brand");

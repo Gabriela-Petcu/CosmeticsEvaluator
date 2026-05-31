@@ -1,4 +1,3 @@
-# ─── Stage 1: Build ───────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
@@ -10,13 +9,11 @@ COPY . .
 WORKDIR /src/Backend/CosmeticsEvaluator.Api
 RUN dotnet publish "CosmeticsEvaluator.Api.csproj" -c Release -o /app/publish --no-restore
 
-# ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
 COPY --from=build /app/publish .
 
-# Copiază CSV-ul din stage-ul de build (nu din /src care nu există în runtime)
 COPY --from=build /src/Data/Raw/skincare_df.csv /app/Data/skincare_df.csv
 
 ENV ASPNETCORE_URLS=http://+:${PORT:-8080}

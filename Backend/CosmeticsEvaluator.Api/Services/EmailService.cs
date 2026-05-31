@@ -4,19 +4,19 @@ using SendGrid.Helpers.Mail;
 namespace CosmeticsEvaluator.Api.Services
 {
     /// <summary>
-    /// Defineste contractul pentru serviciul de trimitere email-uri.
+    /// Defines the contract for the email sending service.
     /// </summary>
     public interface IEmailService
     {
         /// <summary>
-        /// Trimite un email de resetare a parolei catre adresa specificata.
+        /// Sends a password reset email to the specified address.
         /// </summary>
         Task SendPasswordResetEmailAsync(string toEmail, string resetLink);
     }
 
     /// <summary>
-    /// Implementare a serviciului de email folosind SendGrid.
-    /// API key-ul este citit din variabila de mediu SENDGRID_API_KEY.
+    /// Implements the email sending service using SendGrid.
+    /// The API key is read from the SENDGRID_API_KEY environment variable.
     /// </summary>
     public class EmailService : IEmailService
     {
